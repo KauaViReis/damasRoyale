@@ -1,0 +1,281 @@
+/* ============================================================
+   DAMAS 3D — Efeitos Visuais (partículas, destaques, marcações)
+   ============================================================ */
+
+import * as THREE from 'three';
+import { worldPos } from './board3d.js';
+import { tween, easeIO } from './utils.js';
+
+export class FXManager {
+  constructor(scene, camera) {
+    this.scene = scene;
+    this.camera = camera;
+    this.fxGroup = new THREE.Group();
+    scene.add(this.fxGroup);
+
+    /* Shake configuration */
+    this.shakeIntensity = 0;
+    this.cameraBasePos = new THREE.Vector3();
+
+    /* Geometrias reutilizáveis */
+    this.discGeo = new THREE.CircleGeometry(0.34, 40);
+    this.ringGeo = new THREE.RingGeometry(0.40, 0.47, 44);
+    this.markGeo = new THREE.PlaneGeometry(0.97, 0.97);
+    this.particleGeo = new THREE.BoxGeometry(0.04, 0.04, 0.04);
+
+    this.activeFx = [];
+    this.lastMarks = [];
+    this.particles = [];
+    
+    /* Peça Fantasma */
+    this.ghostMat = new THREE.MeshBasicMaterial({
+      color: 0xffffff, transparent: true, opacity: 0.3,
+      depthWrite: false, wireframe: true
+    });
+    this.ghostGeo = new THREE.CylinderGeometry(0.3, 0.3, 0.16, 24);
+    this.ghostMesh = new THREE.Mesh(this.ghostGeo, this.ghostMat);
+    this.ghostMesh.visible = false;
+    this.scene.add(this.ghostMesh);
+  }
+
+  /* Disco indicador de destino */
+  addDisc(r, c, color) {
+    const mat = new THREE.MeshBasicMaterial({
+      color, transparent: true, opacity: 0.55, depthWrite: false
+    });
+    const m = new THREE.Mesh(this.discGeo, mat);
+    m.rotation.x = -Math.PI / 2;
+    const p = worldPos(r, c);
+    m.position.set(p.x, 0.02, p.z);
+    m.userData = { r, c, ph: Math.random() * 6, kind: 'disc' };
+    this.fxGroup.add(m);
+    this.activeFx.push(m);
+    return m;
+  }
+
+  /* Anel indicador de peça com captura obrigatória */
+  addRing(r, c, color) {
+    const mat = new THREE.MeshBasicMaterial({
+      color, transparent: true, opacity: 0.5,
+      depthWrite: false, side: THREE.DoubleSide
+    });
+    const m = new THREE.Mesh(this.ringGeo, mat);
+    m.rotation.x = -Math.PI / 2;
+    const p = worldPos(r, c);
+    m.position.set(p.x, 0.018, p.z);
+    m.userData = { r, c, ph: Math.random() * 6, kind: 'ring' };
+    this.fxGroup.add(m);
+    this.activeFx.push(m);
+  }
+
+  /* Limpa todos os indicadores (discos + anéis) */
+  clearFx() {
+    for (const m of this.activeFx) this.fxGroup.remove(m);
+    this.activeFx = [];
+  }
+
+  /* Remove apenas discos (mantém anéis) */
+  clearDiscs() {
+    this.activeFx = this.activeFx.filter(m => {
+      if (m.userData.kind === 'disc') { this.fxGroup.remove(m); return false; }
+      return true;
+    });
+  }
+
+  /* Marca a última jogada */
+  setLastMove(from, to) {
+    for (const m of this.lastMarks) this.fxGroup.remove(m);
+    this.lastMarks = [];
+    for (const [r, c] of [from, to]) {
+      const mat = new THREE.MeshBasicMaterial({
+        color: 0xE3A94E, transparent: true, opacity: 0.14, depthWrite: false
+      });
+      const m = new THREE.Mesh(this.markGeo, mat);
+      m.rotation.x = -Math.PI / 2;
+      const p = worldPos(r, c);
+      m.position.set(p.x, 0.012, p.z);
+      this.fxGroup.add(m);
+      this.lastMarks.push(m);
+    }
+  }
+
+  clearLastMove() {
+    for (const m of this.lastMarks) this.fxGroup.remove(m);
+    this.lastMarks = [];
+  }
+
+  /* ====== PARTÍCULAS DE CAPTURA ====== */
+  spawnCaptureParticles(r, c, color) {
+    const origin = worldPos(r, c);
+    const count = 10;
+    for (let i = 0; i < count; i++) {
+      const mat = new THREE.MeshBasicMaterial({
+        color, transparent: true, opacity: 0.9
+      });
+      const m = new THREE.Mesh(this.particleGeo, mat);
+      m.position.copy(origin);
+      m.position.y = 0.1;
+      const angle = (i / count) * Math.PI * 2 + Math.random() * 0.4;
+      const speed = 1.8 + Math.random() * 2.2;
+      m.userData.vel = new THREE.Vector3(
+        Math.cos(angle) * speed,
+        3 + Math.random() * 3,
+        Math.sin(angle) * speed
+      );
+      m.userData.life = 0;
+      m.userData.maxLife = 0.5 + Math.random() * 0.25;
+      const s = 0.6 + Math.random() * 0.8;
+      m.scale.set(s, s, s);
+      m.rotation.set(Math.random() * 3, Math.random() * 3, Math.random() * 3);
+      this.scene.add(m);
+      this.particles.push(m);
+    }
+  }
+
+  /* ====== PARTÍCULAS DE COROAÇÃO ====== */
+  spawnCrownParticles(r, c) {
+    const origin = worldPos(r, c);
+    const count = 14;
+    for (let i = 0; i < count; i++) {
+      const mat = new THREE.MeshBasicMaterial({
+        color: 0xD9AC3C, transparent: true, opacity: 1.0
+      });
+      const m = new THREE.Mesh(this.particleGeo, mat);
+      m.position.copy(origin);
+      m.position.y = 0.2;
+      const angle = (i / count) * Math.PI * 2;
+      const radSpeed = 0.5 + Math.random() * 0.8;
+      m.userData.vel = new THREE.Vector3(
+        Math.cos(angle) * radSpeed,
+        4 + Math.random() * 3,
+        Math.sin(angle) * radSpeed
+      );
+      m.userData.life = 0;
+      m.userData.maxLife = 0.7 + Math.random() * 0.3;
+      m.userData.isCrown = true;
+      this.scene.add(m);
+      this.particles.push(m);
+    }
+  }
+
+  /* ====== CAMERA SHAKE ====== */
+  shake(intensity = 0.5) {
+    this.shakeIntensity = intensity;
+  }
+
+  /* ====== ZOOM PUNCH (FASE 9) ======
+     Leve mergulho de FOV em eventos importantes (multicaptura, coroação) */
+  zoomPunch(strength = 3) {
+    if (!this.camera || this._punching) return;
+    this._punching = true;
+    const baseFov = this.camera.fov;
+    tween(420, k => {
+      const e = Math.sin(k * Math.PI);          /* vai e volta */
+      this.camera.fov = baseFov - strength * e;
+      this.camera.updateProjectionMatrix();
+    }).then(() => {
+      this.camera.fov = baseFov;
+      this.camera.updateProjectionMatrix();
+      this._punching = false;
+    });
+  }
+
+  /* ====== POEIRA DE ATERRISSAGEM (FASE 9) ======
+     Faíscas baixas e curtas no ponto onde a peça pousa */
+  spawnLandingDust(r, c, color) {
+    const origin = worldPos(r, c);
+    const count = 7;
+    for (let i = 0; i < count; i++) {
+      const mat = new THREE.MeshBasicMaterial({
+        color, transparent: true, opacity: 0.55
+      });
+      const m = new THREE.Mesh(this.particleGeo, mat);
+      m.position.set(origin.x, 0.04, origin.z);
+      const angle = (i / count) * Math.PI * 2 + Math.random() * 0.5;
+      const speed = 0.9 + Math.random() * 1.2;
+      m.userData.vel = new THREE.Vector3(
+        Math.cos(angle) * speed,
+        0.6 + Math.random() * 0.8,
+        Math.sin(angle) * speed
+      );
+      m.userData.life = 0;
+      m.userData.maxLife = 0.28 + Math.random() * 0.18;
+      const s = 0.45 + Math.random() * 0.4;
+      m.scale.set(s, s, s);
+      this.scene.add(m);
+      this.particles.push(m);
+    }
+  }
+
+  /* ====== PEÇA FANTASMA ====== */
+  showGhost(r, c, color) {
+    const p = worldPos(r, c);
+    this.ghostMesh.position.set(p.x, 0.08, p.z);
+    this.ghostMesh.material.color.set(color);
+    this.ghostMesh.visible = true;
+  }
+
+  hideGhost() {
+    this.ghostMesh.visible = false;
+  }
+
+  /* Atualização por frame (chamada no loop principal) */
+  update(time, dt) {
+    /* Shake da câmera */
+    if (this.shakeIntensity > 0 && this.camera) {
+      if (this.cameraBasePos.lengthSq() === 0) this.cameraBasePos.copy(this.camera.position);
+      
+      const dx = (Math.random() - 0.5) * this.shakeIntensity;
+      const dy = (Math.random() - 0.5) * this.shakeIntensity;
+      const dz = (Math.random() - 0.5) * this.shakeIntensity;
+      
+      this.camera.position.set(
+        this.cameraBasePos.x + dx,
+        this.cameraBasePos.y + dy,
+        this.cameraBasePos.z + dz
+      );
+      
+      this.shakeIntensity -= dt * 2.5;
+      if (this.shakeIntensity <= 0) {
+        this.shakeIntensity = 0;
+        this.camera.position.copy(this.cameraBasePos);
+        this.cameraBasePos.set(0, 0, 0);
+      }
+    }
+
+    /* Animação dos indicadores */
+    for (const m of this.activeFx) {
+      m.material.opacity = (m.userData.kind === 'disc' ? 0.5 : 0.42)
+        + 0.22 * Math.sin(time * 5 + m.userData.ph);
+      if (m.userData.kind === 'ring') m.rotation.z = time * 0.8;
+    }
+
+    /* Atualizar partículas */
+    if (this.particles.length === 0) return;
+    const gravity = -15;
+    let writeIdx = 0;
+    for (let i = 0; i < this.particles.length; i++) {
+      const p = this.particles[i];
+      p.userData.life += dt;
+      const t = p.userData.life;
+      if (t >= p.userData.maxLife) {
+        this.scene.remove(p);
+        p.material.dispose();
+        continue;
+      }
+      const vel = p.userData.vel;
+      p.position.x += vel.x * dt;
+      p.position.y += vel.y * dt;
+      p.position.z += vel.z * dt;
+      vel.y += gravity * dt;
+      const alpha = 1 - (t / p.userData.maxLife);
+      p.material.opacity = alpha;
+      p.rotation.x += dt * 4;
+      p.rotation.z += dt * 3;
+      const s = alpha * (p.userData.isCrown ? 1.5 : 1);
+      p.scale.set(s, s, s);
+      this.particles[writeIdx++] = p;
+    }
+    this.particles.length = writeIdx;
+  }
+}

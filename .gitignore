@@ -1,0 +1,44 @@
+# Arquivos de ambiente
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+.env.local.php
+
+# Pastas de IDE e Editores
+.vscode/
+.agents/
+.claude/
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+.project
+.classpath
+.settings/
+
+# Arquivos do Sistema Operacional
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Logs e temporários
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+logs/
+*.log
+.pnpm-debug.log*
+
+# Builds e pastas temporárias locais
+/dist/
+/out/
+/build/
+/tmp/
+.vercel/
+
+# Configurações do Firebase (Chaves de API)
+js/firebase-config.js
