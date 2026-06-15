@@ -41,6 +41,35 @@ export function createBoard(scene, materials) {
   base.castShadow = true;
   boardGroup.add(base);
 
+  /* Coordenadas (A-H, 1-8) - Fase C */
+  const createTextPlane = (text, x, z) => {
+    const cvs = document.createElement('canvas');
+    cvs.width = 64; cvs.height = 64;
+    const cx = cvs.getContext('2d');
+    cx.fillStyle = '#ffffff';
+    cx.font = 'bold 38px sans-serif';
+    cx.textAlign = 'center';
+    cx.textBaseline = 'middle';
+    cx.globalAlpha = 0.45;
+    cx.fillText(text, 32, 35);
+    
+    const mat = new THREE.MeshBasicMaterial({ 
+      map: new THREE.CanvasTexture(cvs), 
+      transparent: true, depthWrite: false 
+    });
+    const p = new THREE.Mesh(new THREE.PlaneGeometry(0.5, 0.5), mat);
+    p.rotation.x = -Math.PI / 2;
+    p.position.set(x, 0.02, z);
+    boardGroup.add(p);
+  };
+
+  for (let i = 0; i < 8; i++) {
+    createTextPlane(String.fromCharCode(65 + i), i - 3.5, 4.14);
+    createTextPlane(String.fromCharCode(65 + i), i - 3.5, -4.14);
+    createTextPlane((8 - i).toString(), -4.14, i - 3.5);
+    createTextPlane((8 - i).toString(), 4.14, i - 3.5);
+  }
+
   /* Mesa */
   const table = new THREE.Mesh(
     new THREE.CylinderGeometry(8.6, 9.2, 0.5, 64),

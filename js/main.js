@@ -20,7 +20,7 @@ import { UIManager } from './ui.js';
 import { InputManager } from './input.js';
 import { OnlineManager } from './online.js';
 import { isFirebaseConfigured } from './firebase-config.js';
-import { sleep, vibrate, setHaptics } from './utils.js';
+import { sleep, vibrate, setHaptics, tween, easeOutBack } from './utils.js';
 
 /* ============ PREFERÊNCIAS PERSISTIDAS ============ */
 const PREFS_KEY = 'damasRoyale.prefs';
@@ -150,7 +150,7 @@ function clearPieces() {
   grid.fill(null);
 }
 
-function buildPieces() {
+function buildPieces(animateDrop = false) {
   clearPieces();
   const th = PIECE_THEMES[pieceThemeIdx];
   for (let r = 0; r < 8; r++) for (let c = 0; c < 8; c++) {
@@ -160,6 +160,22 @@ function buildPieces() {
     if (Math.abs(v) === 2) { p.king = true; addCrown(p, geos, materials.gold, false); }
     pieces.push(p);
     grid[idx(r, c)] = p;
+    
+    if (animateDrop) {
+      p.mesh.visible = false;
+      setTimeout(() => {
+        p.mesh.visible = true;
+        p.mesh.position.y = 3.5 + Math.random() * 1.5;
+        const startY = p.mesh.position.y;
+        tween(550 + Math.random() * 200, k => {
+          const e = easeOutBack(k);
+          p.mesh.position.y = Math.max(0, startY * (1 - e));
+        }).then(() => {
+          p.mesh.position.y = 0;
+          fx.spawnLandingDust(r, c, p.player === 1 ? th.p1 : th.p2);
+        });
+      }, Math.random() * 450);
+    }
   }
 }
 
@@ -192,6 +208,47 @@ function moverColorHex(pl) {
 }
 
 /* ============ FLUXO DE TURNOS ============ */
+/* ============ TUTORIAL (FASE D) ============ */
+let tutorialDone = localStorage.getItem('damasRoyale.tutorialDone') === 'true';
+let tutorialStep = 0;
+
+function updateTutorial() {
+  if (tutorialDone) return;
+  const overlay = ui.$('#tutorialOverlay');
+  if (!overlay) return;
+  const msg = ui.$('#tutorialMsg');
+  
+  if (state !== ST.human) {
+    overlay.style.display = 'none';
+    return;
+  }
+  
+  overlay.style.display = 'block';
+  if (tutorialStep === 0) {
+    msg.innerHTML = "<b>Sua vez!</b><br>Toque em uma peça sua.";
+    if (selected) tutorialStep = 1;
+  }
+  if (tutorialStep === 1) {
+    if (!selected) {
+      tutorialStep = 0;
+      updateTutorial();
+      return;
+    }
+    const hasCap = allMoves.some(m => m.capture);
+    if (hasCap) msg.innerHTML = "<b>Captura obrigatória!</b><br>Toque no alvo vermelho para pular.";
+    else msg.innerHTML = "<b>Movimento</b><br>Toque na casa de destino amarela.";
+  }
+}
+
+function finishTutorial() {
+  if (tutorialDone) return;
+  tutorialDone = true;
+  localStorage.setItem('damasRoyale.tutorialDone', 'true');
+  const overlay = ui.$('#tutorialOverlay');
+  if (overlay) overlay.style.display = 'none';
+  ui.toast('Excelente! Boa sorte na partida.');
+}
+
 function refreshTurnUI() {
   if (state === ST.replay) {
     ui.$('#turnTxt').textContent = 'MODO REPLAY';
@@ -213,6 +270,7 @@ function deselect() {
   }
   selected = null; seqs = []; stepIdx = 0;
   fx.clearFx();
+  updateTutorial();
 }
 
 function saveState() {
@@ -274,6 +332,7 @@ function startTurn() {
     refreshTurnUI();
     showCaptureRings();
   }
+  updateTutorial();
 }
 
 function selectPiece(p) {
@@ -291,6 +350,7 @@ function selectPiece(p) {
   p.mesh.position.y = 0.12;
   showTargets();
   audio.select();
+  updateTutorial();
 }
 
 function showTargets() {
@@ -358,6 +418,7 @@ function displayedClock(color) {
 }
 
 async function finalizeMove(move) {
+  finishTutorial();
   const last = move.steps[move.steps.length - 1];
   const piece = selected || grid[idx(last.r, last.c)];
   const mover = turn;
@@ -479,6 +540,8 @@ function applySilently(mv) {
 }
 
 /* ============ FIM DE JOGO ============ */
+let cinematicOrbit = false;
+
 const REASON_TXT = {
   resign: 'VITÓRIA POR DESISTÊNCIA',
   abandon: 'O OPONENTE ABANDONOU A PARTIDA',
@@ -491,6 +554,7 @@ const REASON_TXT = {
 function gameOver(winner, reason = '', fromServer = false) {
   if (state === ST.over) return;
   state = ST.over;
+  cinematicOrbit = true;
   ui.showDrawOffer(false);
   ui.setPresence(null);
   ui.showEvalBar(false);
@@ -508,7 +572,8 @@ function gameOver(winner, reason = '', fromServer = false) {
   }
 }
 
-function resetMatchState() {
+function resetMatchState(animatePieces = false) {
+  cinematicOrbit = false;
   ui.hideOverlay('over');
   ui.setRatingDelta('');
   ui.setPresence(null);
@@ -520,7 +585,7 @@ function resetMatchState() {
   remoteQueue = [];
   timeoutClaimed = false;
   initBoard(bd);
-  buildPieces();
+  buildPieces(animatePieces);
   turn = 1;
   history.clear();
   historyStack = [];
@@ -529,7 +594,7 @@ function resetMatchState() {
 }
 
 function newGame() {
-  resetMatchState();
+  resetMatchState(true);
   time1 = timeLimit > 0 && mode !== 'online' ? timeLimit : null;
   time2 = time1;
   ui.updateTimer(time1, time2);
@@ -1403,11 +1468,16 @@ ui.buildSwatches(applyBoardTheme, applyPieceTheme, boardThemeIdx, pieceThemeIdx)
 /* ============ RENDER LOOP ============ */
 window.addEventListener('resize', () => {
   resize();
-  input.refit();
+  input.resetView();
   if (composer) composer.setSize(window.innerWidth, window.innerHeight);
 });
 resize();
 input.resetView();
+// Mobile viewport fix: force recalculation after layout settles
+setTimeout(() => {
+  resize();
+  input.resetView();
+}, 150);
 
 /* Relógio online sincronizado (FASE 4).
    Roda em setInterval (não no rAF) para detectar timeout
@@ -1449,6 +1519,12 @@ let prevTime = 0;
   if (scene.fog) {
     scene.fog.near = input.radius * fogNearMul;
     scene.fog.far  = input.radius * fogFarMul;
+  }
+
+  /* Rotação cinematográfica no fim de jogo */
+  if (cinematicOrbit && !input.dragging && !input.animatingView) {
+    input.theta += dt * 0.15;
+    input.syncCamera();
   }
 
   /* Relógio (modos locais) */

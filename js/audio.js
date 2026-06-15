@@ -39,8 +39,9 @@ export class AudioManager {
       flt.frequency.value = 3000;
       osc.type = type;
       osc.frequency.value = freq;
-      /* Leve variação de pitch para som mais natural */
-      osc.frequency.value *= 0.98 + Math.random() * 0.04;
+      /* Variação de pitch e duração para som mais natural (Polish V2) */
+      osc.frequency.value *= 0.94 + Math.random() * 0.12;
+      dur *= 0.9 + Math.random() * 0.2;
       const t = ac.currentTime + delay;
       gn.gain.setValueAtTime(gain, t);
       gn.gain.exponentialRampToValueAtTime(0.0001, t + dur);
