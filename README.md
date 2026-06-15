@@ -9,7 +9,7 @@
 </p>
 
 <p align="center">
-  <img src="anim_crown.svg" alt="Animação Coroa Flutuante" width="150" style="margin-top: 10px;"/>
+  <img src="assets/svg/anim_crown.svg" alt="Animação Coroa Flutuante" width="150" style="margin-top: 10px;"/>
 </p>
 
 Damas Royale é um jogo de damas 3D moderno com regras oficiais brasileiras. Desenvolvido em **Three.js** puro usando módulos ES nativos (sem necessidade de processos de build complexos) e integrado com o **Google Firebase** para partidas em tempo real, sistema de Elo e ranking global.
