@@ -669,6 +669,7 @@ export class OnlineManager {
     const f = this.f;
     const snap = await f.getDocs(f.query(
       f.collection(this.db, 'players'),
+      f.where('google', '==', true),
       f.orderBy('rating', 'desc'), f.limit(top)
     ));
     return snap.docs.map(d => ({ uid: d.id, ...d.data() }));

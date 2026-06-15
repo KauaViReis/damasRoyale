@@ -26,9 +26,10 @@ const db = admin.firestore();
 
 async function updateReadme() {
   try {
-    // Busca os 3 maiores Elos do banco de dados
+    // Busca os 3 maiores ratings (apenas contas logadas com Google)
     const snapshot = await db.collection('players')
-      .orderBy('elo', 'desc')
+      .where('google', '==', true)
+      .orderBy('rating', 'desc')
       .limit(3)
       .get();
       
@@ -41,8 +42,8 @@ async function updateReadme() {
       const medals = ['🥇', '🥈', '🥉'];
       snapshot.forEach(doc => {
         const data = doc.data();
-        const nome = data.displayName || 'Anônimo';
-        const elo = Math.round(data.elo || 1200);
+        const nome = data.name || data.displayName || 'Anônimo';
+        const elo = Math.round(data.rating || 1200);
         rankingMarkdown += `| ${medals[rank-1]} ${rank}º | **${nome}** | ${elo} |\n`;
         rank++;
       });
