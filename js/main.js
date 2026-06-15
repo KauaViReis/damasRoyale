@@ -60,6 +60,11 @@ let state = ST.menu;
 const bd = new Int8Array(64);
 let turn = 1;
 let mode = 'pvp';              /* pvp | pve | online | replay */
+
+function isDev() {
+  const n = (ui.$('#nickInput').value || '').trim().toUpperCase();
+  return n === 'KAUÃ' || n === 'KAUA';
+}
 let depth = 4;
 let allMoves = [];
 let selected = null, seqs = [], stepIdx = 0;
@@ -377,9 +382,9 @@ function onCaptureFx(victim, s) {
 }
 
 /* Barra de vantagem (linha de análise): visível em local/máquina/replay,
-   oculta no online para não dar assistência indevida. */
+   oculta no online para não dar assistência indevida (exceto isDev). */
 function refreshEvalBar() {
-  const visible = evalOn && mode !== 'online';
+  const visible = evalOn && (mode !== 'online' || isDev());
   ui.showEvalBar(visible);
   if (!visible) return;
   const names = {
@@ -603,7 +608,7 @@ function newGame() {
   ui.updateTimer(time1, time2);
   ui.updateScore(capCount, winCount, mode, pieceThemeIdx);
   ui.setActions({
-    hint: mode !== 'online',
+    hint: mode !== 'online' || isDev(),
     resign: mode === 'pve' || (mode === 'online' && !spectating),
     draw: mode === 'online' && !spectating,
     emote: mode === 'online' && !spectating,
