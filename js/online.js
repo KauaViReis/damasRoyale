@@ -62,6 +62,30 @@ export class OnlineManager {
         const stop = authM.onAuthStateChanged(this.auth, () => { stop(); res(); });
       });
       if (!this.auth.currentUser) await authM.signInAnonymously(this.auth);
+      
+      try {
+        const result = await authM.getRedirectResult(this.auth);
+        if (result && result.user) {
+          this.uid = result.user.uid;
+          await this._loadProfile(nick);
+          await this._syncGoogleInfo(result.user);
+          this.redirectResultMsg = 'CONTA GOOGLE VINCULADA ✓';
+        }
+      } catch (e) {
+        if (e.code === 'auth/credential-already-in-use') {
+          const credential = authM.GoogleAuthProvider.credentialFromError(e);
+          if (credential) {
+            const res = await authM.signInWithCredential(this.auth, credential);
+            this.uid = res.user.uid;
+            await this._loadProfile(nick);
+            await this._syncGoogleInfo(res.user);
+            this.redirectResultMsg = 'CONECTADO À SUA CONTA GOOGLE';
+          }
+        } else {
+          console.error('Erro no getRedirectResult:', e);
+        }
+      }
+      
       this.uid = this.auth.currentUser.uid;
       await this._loadProfile(nick);
       this.ready = true;
@@ -108,22 +132,10 @@ export class OnlineManager {
   /* Vincula a conta Google ao perfil anônimo (preserva o Elo).
      Se o Google já tiver outro perfil, troca para ele. */
   async linkGoogle() {
-    const { GoogleAuthProvider, linkWithPopup, signInWithPopup } = this.authM;
+    const { GoogleAuthProvider, linkWithRedirect } = this.authM;
     const provider = new GoogleAuthProvider();
-    try {
-      const res = await linkWithPopup(this.auth.currentUser, provider);
-      await this._syncGoogleInfo(res.user);
-      return { switched: false };
-    } catch (e) {
-      if (e.code === 'auth/credential-already-in-use') {
-        const res = await signInWithPopup(this.auth, provider);
-        this.uid = res.user.uid;
-        await this._loadProfile(null);
-        await this._syncGoogleInfo(res.user);
-        return { switched: true };
-      }
-      throw e;
-    }
+    provider.setCustomParameters({ prompt: 'select_account' });
+    await linkWithRedirect(this.auth.currentUser, provider);
   }
 
   async _syncGoogleInfo(user) {

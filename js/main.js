@@ -1098,6 +1098,14 @@ function ensureOnline() {
         ui.updateRatingBadge(online.profile);
         online.updateActive();
         startIncomingChallengeListener();
+        
+        if (online.redirectResultMsg) {
+          ui.toast(online.redirectResultMsg);
+          online.redirectResultMsg = null;
+          if (ui.$('#profilePanel').style.display !== 'none') {
+            ui.renderProfile(online.profile);
+          }
+        }
       } else {
         ui.setOnlineStatus('FALHA AO CONECTAR — VERIFIQUE A CONFIGURAÇÃO');
         onlineInitPromise = null;
@@ -1392,15 +1400,11 @@ ui.$('#btnProfClose').onclick = () => ui.hideOverlay('profilePanel');
 ui.$('#btnGoogleLink').onclick = async () => {
   if (!(await ensureOnline())) return;
   try {
-    const res = await online.linkGoogle();
-    ui.toast(res.switched ? 'CONECTADO À SUA CONTA GOOGLE' : 'CONTA GOOGLE VINCULADA ✓');
-    ui.renderProfile(online.profile);
-    ui.updateRatingBadge(online.profile);
+    ui.toast('Redirecionando para o Google...', true);
+    await online.linkGoogle();
   } catch (e) {
     console.error(e);
-    if (e.code !== 'auth/popup-closed-by-user') {
-      ui.toast('ERRO AO VINCULAR GOOGLE', true);
-    }
+    ui.toast('ERRO AO REDIRECIONAR', true);
   }
 };
 
