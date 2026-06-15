@@ -26,11 +26,12 @@ A interface conta com uma estética premium em *glassmorphism* escuro e detalhes
 | :---: | :--- | :---: |
 | - | *Ainda sem jogadores ranqueados* | - |
 
-*Última atualização: 15/06/2026, 11:16 (Automático)*
+*Última atualização: 15/06/2026, 11:21 (Automático)*
 
 <!-- TOP_RANKING_END -->
 
 <!-- TOTAL_MATCHES_START -->
+> 🔥 Já foram disputadas **3** partidas épicas no Damas Royale!
 <!-- TOTAL_MATCHES_END -->
 
 ---
