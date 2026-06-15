@@ -104,6 +104,12 @@ let dragStartX = 0, dragStartZ = 0;
 let quietKingMoves = 0;
 let repMap = new Map();
 
+/* Anti-spam da proposta de empate: cooldown + máximo por partida */
+const DRAW_OFFER_COOLDOWN_MS = 3000;
+const DRAW_OFFER_MAX = 5;
+let lastDrawOfferT = 0;
+let drawOfferCount = 0;
+
 /* Online */
 let myColor = 0;
 let spectating = false;
@@ -617,6 +623,8 @@ function resetMatchState(animatePieces = false) {
   repMap.clear();
   remoteQueue = [];
   timeoutClaimed = false;
+  lastDrawOfferT = 0;
+  drawOfferCount = 0;
   initBoard(bd);
   buildPieces(animatePieces);
   turn = 1;
@@ -1458,6 +1466,9 @@ document.querySelectorAll('#emotePalette button').forEach(b => {
 /* --- Barra de ações em partida --- */
 ui.$('#btnHint').onclick = () => {
   if (state !== ST.human || !canUseHint()) return;
+  /* Em captura múltipla o tabuleiro lógico só é atualizado no fim da
+     sequência; pedir dica aqui apagaria a seleção e travaria o lance. */
+  if (stepIdx > 0) { ui.toast('TERMINE A CAPTURA EM ANDAMENTO', true); audio.error(); return; }
   const m = getHint(bd, turn);
   if (!m) return;
   deselect();
@@ -1479,6 +1490,17 @@ ui.$('#btnResign').onclick = () => {
 
 ui.$('#btnDrawOffer').onclick = () => {
   if (mode !== 'online' || state === ST.over) return;
+  const now = Date.now();
+  if (now - lastDrawOfferT < DRAW_OFFER_COOLDOWN_MS) {
+    ui.toast('AGUARDE PARA PROPOR EMPATE NOVAMENTE', true);
+    return;
+  }
+  if (drawOfferCount >= DRAW_OFFER_MAX) {
+    ui.toast('LIMITE DE PROPOSTAS DE EMPATE ATINGIDO', true);
+    return;
+  }
+  lastDrawOfferT = now;
+  drawOfferCount++;
   online.offerDraw();
   ui.toast('EMPATE PROPOSTO');
 };
