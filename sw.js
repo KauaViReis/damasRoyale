@@ -4,7 +4,7 @@
    Trocar CACHE ao publicar nova versão invalida o cache antigo.
    ============================================================ */
 
-const CACHE = 'damas-royale-v1';
+const CACHE = 'damas-royale-v2';
 const SHELL = [
   './',
   './index.html',
@@ -15,6 +15,7 @@ const SHELL = [
   './js/rules.js',
   './js/ai.js',
   './js/elo.js',
+  './js/leagues.js',
   './js/online.js',
   './js/firebase-config.js',
   './js/scene.js',

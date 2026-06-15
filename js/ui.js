@@ -5,6 +5,7 @@
 import { hex } from './utils.js';
 import { BOARD_THEMES, PIECE_THEMES } from './themes.js';
 import { ratingTitle } from './elo.js';
+import { leagueOf } from './leagues.js';
 
 export class UIManager {
   constructor() {
@@ -148,7 +149,31 @@ export class UIManager {
     if (!profile) { badge.style.display = 'none'; return; }
     badge.style.display = 'flex';
     const btnProf = this.$('#btnProfile');
-    if (btnProf) btnProf.textContent = `👤 MEU PERFIL (${profile.rating} ELO)`;
+    if (btnProf) {
+      const lg = leagueOf(profile.rating);
+      btnProf.textContent = `👤 ${lg.label} · ${profile.rating} ELO`;
+    }
+  }
+
+  /* Preenche o emblema de liga + barra de progresso de um perfil */
+  _renderLeague(rating) {
+    const lg = leagueOf(rating);
+    const chip = this.$('#profLeagueChip');
+    const fill = this.$('#profLeagueFill');
+    const txt = this.$('#profLeagueTxt');
+    if (!chip) return;
+    chip.textContent = lg.label;
+    chip.style.color = lg.color;
+    chip.style.borderColor = lg.color;
+    if (fill) {
+      fill.style.width = lg.progressPct.toFixed(0) + '%';
+      fill.style.background = lg.color;
+    }
+    if (txt) {
+      txt.textContent = lg.isApex
+        ? 'ÁPICE'
+        : `${rating} → ${lg.nextRating} (próxima divisão)`;
+    }
   }
 
   /* ============ PERFIL (FASE 1) ============ */
@@ -156,6 +181,7 @@ export class UIManager {
     this.$('#profName').textContent = profile.name;
     this.$('#profTitle').textContent = ratingTitle(profile.rating);
     this.$('#profRating').textContent = profile.rating;
+    this._renderLeague(profile.rating);
     const photo = this.$('#profPhoto');
     const crown = this.$('#profCrown');
     if (profile.photoURL) {
@@ -374,10 +400,11 @@ export class UIManager {
       const row = document.createElement('div');
       row.className = 'lb-row' + (p.uid === myUid ? ' me' : '');
       const medal = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : (i + 1) + '.';
+      const lg = leagueOf(p.rating);
       row.innerHTML =
         `<span class="lb-pos">${medal}</span>` +
         `<span class="lb-name">${this._esc(p.name || '???')}</span>` +
-        `<span class="lb-title">${ratingTitle(p.rating)}</span>` +
+        `<span class="lb-title" style="color:${lg.color}">${lg.label}</span>` +
         `<span class="lb-rating">${p.rating}</span>`;
       el.appendChild(row);
     });

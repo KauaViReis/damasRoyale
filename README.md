@@ -103,32 +103,21 @@ Para habilitar as partidas online e o ranking global:
 3. Cole as chaves em [js/firebase-config.js](js/firebase-config.js).
 4. No menu lateral do Firebase:
    *   Vá em **Authentication -> Sign-in Method** e ative o provedor **Anônimo** e o **Google**.
-   *   Crie o banco **Firestore Database** e insira as seguintes regras de segurança na aba **Rules**:
+   *   Crie o banco **Firestore Database**. As regras de segurança ficam versionadas no
+       arquivo [firestore.rules](firestore.rules) deste repositório.
 
-```javascript
-rules_version = '2';
-service cloud.firestore {
-  match /databases/{database}/documents {
-    match /players/{uid} {
-      allow read: if true;
-      allow create, update: if request.auth != null && request.auth.uid == uid;
-    }
-    match /lobby/{uid} {
-      allow read, create, update, delete: if request.auth != null;
-    }
-    match /games/{id} {
-      allow read, create, update: if request.auth != null;
-    }
-    match /challenges/{id} {
-      allow read, write: if request.auth != null;
-    }
-    match /match_history/{id} {
-      allow read: if request.auth != null;
-      allow create, update: if request.auth != null;
-    }
-  }
-}
+Para publicá-las, instale a [Firebase CLI](https://firebase.google.com/docs/cli) e rode:
+
+```bash
+firebase deploy --only firestore:rules
 ```
+
+   *   Alternativamente, copie o conteúdo de [firestore.rules](firestore.rules) e cole na
+       aba **Rules** do Firestore Console.
+
+> **Flag de desenvolvedor:** o acesso a dica/análise no modo online é controlado pelo campo
+> `dev: true` no documento `players/{uid}` — gravável **apenas** via Console/Admin SDK (as
+> regras impedem o cliente de defini-lo). Não é mais liberado digitando um apelido.
 
 ---
 

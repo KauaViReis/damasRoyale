@@ -102,7 +102,8 @@ export class OnlineManager {
       wins: 0, losses: 0, draws: 0, games: 0,
       streak: 0, bestStreak: 0,
       ratingHistory: [RATING_INICIAL],
-      photoURL: null, google: false
+      photoURL: null, google: false,
+      dev: false              /* acesso a dica/análise no online; só via Admin/console */
     };
   }
 

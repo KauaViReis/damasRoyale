@@ -61,11 +61,11 @@ const bd = new Int8Array(64);
 let turn = 1;
 let mode = 'pvp';              /* pvp | pve | online | replay */
 
-/* Apelidos com acesso de desenvolvedor (dica/análise no online) */
-const DEV_NAMES = new Set(['KAUÃ2', 'KAUA2', 'KAUA3']);
+/* Acesso de desenvolvedor (dica/análise no online): controlado pelo campo
+   players/{uid}.dev, gravável só via Admin/console. As regras do Firestore
+   impedem o cliente de forjá-lo — não depende mais do apelido digitado. */
 function isDev() {
-  const n = (ui.$('#nickInput').value || '').trim().toUpperCase();
-  return DEV_NAMES.has(n);
+  return !!(online.ready && online.profile && online.profile.dev);
 }
 /* Dica disponível fora do online; no online apenas para o dev */
 function canUseHint() {
