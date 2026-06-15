@@ -21,7 +21,13 @@ A interface conta com uma estética premium em *glassmorphism* escuro e detalhes
 ## 🏆 Top 3 Grandes Mestres (Ao Vivo)
 
 <!-- TOP_RANKING_START -->
-*O ranking será atualizado automaticamente em breve pelo GitHub Actions!*
+
+| 🏆 Posição | Jogador | Elo |
+| :---: | :--- | :---: |
+| - | *Ainda sem jogadores ranqueados* | - |
+
+*Última atualização: 15/06/2026, 11:16 (Automático)*
+
 <!-- TOP_RANKING_END -->
 
 ---
