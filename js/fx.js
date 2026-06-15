@@ -21,6 +21,13 @@ export class FXManager {
     this.fireworksOn = false;
     this.fwColor = 0xffffff;
 
+    /* Clima (Weather) */
+    this.weatherType = 'none';
+    this.weatherMatDust = new THREE.MeshBasicMaterial({ color: 0xFCEBA7, transparent: true, opacity: 0.15, depthWrite: false });
+    this.weatherMatSakura = new THREE.MeshBasicMaterial({ color: 0xFFB7C5, transparent: true, opacity: 0.8, depthWrite: false });
+    this.weatherMatRain = new THREE.MeshBasicMaterial({ color: 0x88CCFF, transparent: true, opacity: 0.4, depthWrite: false });
+    this.weatherMatEmber = new THREE.MeshBasicMaterial({ color: 0xFF5500, transparent: true, opacity: 0.9, depthWrite: false });
+
     /* Geometrias reutilizáveis */
     this.discGeo = new THREE.CircleGeometry(0.34, 40);
     this.ringGeo = new THREE.RingGeometry(0.40, 0.47, 44);
@@ -233,6 +240,11 @@ export class FXManager {
     this.fireworksOn = false;
   }
 
+  /* ====== CLIMA (WEATHER) ====== */
+  setWeather(type) {
+    this.weatherType = type;
+  }
+
   /* Atualização por frame (chamada no loop principal) */
   update(time, dt) {
     /* Shake da câmera */
@@ -262,6 +274,47 @@ export class FXManager {
       m.material.opacity = (m.userData.kind === 'disc' ? 0.5 : 0.42)
         + 0.22 * Math.sin(time * 5 + m.userData.ph);
       if (m.userData.kind === 'ring') m.rotation.z = time * 0.8;
+    }
+
+    /* Clima Contínuo */
+    if (this.weatherType !== 'none' && Math.random() < 0.35) {
+      let mat, px, py, pz, vx, vy, vz, grav, ml;
+      let sx = 1, sy = 1, sz = 1;
+
+      if (this.weatherType === 'dust') {
+        mat = this.weatherMatDust;
+        px = (Math.random() - 0.5) * 20; py = Math.random() * 8; pz = (Math.random() - 0.5) * 20;
+        vx = (Math.random() - 0.5) * 0.2; vy = (Math.random() - 0.5) * 0.2; vz = (Math.random() - 0.5) * 0.2;
+        grav = 0; ml = 4 + Math.random() * 4;
+        sx = 0.5; sy = 0.5; sz = 0.5;
+      } else if (this.weatherType === 'sakura') {
+        mat = this.weatherMatSakura;
+        px = -10 + Math.random() * 20; py = 6 + Math.random() * 4; pz = (Math.random() - 0.5) * 20;
+        vx = 2 + Math.random() * 2; vy = -1 - Math.random(); vz = (Math.random() - 0.5);
+        grav = -0.2; ml = 5 + Math.random() * 3;
+        sx = 1.2; sy = 0.2; sz = 1.2;
+      } else if (this.weatherType === 'rain') {
+        mat = this.weatherMatRain;
+        px = (Math.random() - 0.5) * 25; py = 10 + Math.random() * 5; pz = (Math.random() - 0.5) * 25;
+        vx = 0.5; vy = -15 - Math.random() * 5; vz = 0;
+        grav = 0; ml = 0.8 + Math.random() * 0.5;
+        sx = 0.2; sy = 6.0; sz = 0.2;
+      } else if (this.weatherType === 'embers') {
+        mat = this.weatherMatEmber;
+        px = (Math.random() - 0.5) * 20; py = -2 + Math.random() * 2; pz = (Math.random() - 0.5) * 20;
+        vx = (Math.random() - 0.5) * 1.5; vy = 1 + Math.random() * 2; vz = (Math.random() - 0.5) * 1.5;
+        grav = 0.5; ml = 3 + Math.random() * 2;
+        sx = 0.6; sy = 0.6; sz = 0.6;
+      }
+
+      if (mat) {
+        const m = new THREE.Mesh(this.particleGeo, mat);
+        m.position.set(px, py, pz);
+        m.scale.set(sx, sy, sz);
+        m.userData = { vel: new THREE.Vector3(vx, vy, vz), life: 0, maxLife: ml, gravity: grav };
+        this.scene.add(m);
+        this.particles.push(m);
+      }
     }
 
     /* Fireworks (Confetti) */

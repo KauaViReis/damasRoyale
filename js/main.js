@@ -71,7 +71,9 @@ let selected = null, seqs = [], stepIdx = 0;
 let capCount = { '1': 0, '-1': 0 };
 let winCount = { '1': 0, '-1': 0 };
 let boardThemeIdx = prefs.boardTheme ?? 0;
+if (boardThemeIdx >= BOARD_THEMES.length) boardThemeIdx = 0;
 let pieceThemeIdx = prefs.pieceTheme ?? 0;
+if (pieceThemeIdx >= PIECE_THEMES.length) pieceThemeIdx = 0;
 let pieces = [];
 let grid = new Array(64).fill(null);
 
@@ -193,7 +195,8 @@ function applyBoardTheme(i) {
   materials.frame.color.set(t.frame);
   materials.table.color.set(t.table);
   scene.background = new THREE.Color(t.bg);
-  scene.fog = new THREE.Fog(t.bg, 18, 42);
+  scene.fog = new THREE.Fog(t.fogColor || t.bg, t.fogNear || 16, t.fogFar || 42);
+  fx.setWeather(t.weather || 'none');
   ui.updateBoardSwatches(i);
   savePrefs();
 }
@@ -1229,6 +1232,16 @@ ui.segBind('#segHaptics', v => {
     savePrefs();
   };
 }
+
+ui.$('#btnLoadout').onclick = () => {
+  ui.hideOverlay('menu');
+  ui.showOverlay('loadoutOverlay');
+};
+
+ui.$('#btnLoadoutClose').onclick = () => {
+  ui.hideOverlay('loadoutOverlay');
+  ui.showOverlay('menu');
+};
 ui.$('#btnStart').onclick = () => {
   if (mode === 'online') return;
   ui.nameOverride = null;

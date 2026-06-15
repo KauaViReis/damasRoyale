@@ -329,7 +329,32 @@
         </div>
       </div>
 
+      <button class="btn" id="btnLoadout" style="margin-top:16px">🧰 PERSONALIZAR ARENA E EXÉRCITO</button>
       <button class="btn prim" id="btnStart" style="margin-top:8px">COMEÇAR PARTIDA</button>
+    </div>
+  </div>
+
+  <!-- TELA DE LOADOUT -->
+  <div class="overlay hide" id="loadoutOverlay">
+    <div class="panel glass" style="max-width: 500px;">
+      <h2 class="title">PERSONALIZAR</h2>
+      <div class="sub">ESCOLHA SUA ARENA E EXÉRCITO</div>
+      
+      <div class="cfgGroup" style="margin-top: 20px;">
+        <div class="cfgLabel">ARENA 3D (LOCAL)</div>
+        <div id="arenaGrid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+          <!-- js vai preencher -->
+        </div>
+      </div>
+      
+      <div class="cfgGroup" style="margin-top: 20px;">
+        <div class="cfgLabel">SKINS DAS PEÇAS (SINCRONIZADO)</div>
+        <div id="skinGrid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+          <!-- js vai preencher -->
+        </div>
+      </div>
+      
+      <button class="btn prim" id="btnLoadoutClose" style="margin-top:24px">VOLTAR AO MENU</button>
     </div>
   </div>
 

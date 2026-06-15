@@ -432,35 +432,45 @@ export class UIManager {
 
   /* ============ TEMAS ============ */
   buildSwatches(onBoard, onPiece, boardIdx = 0, pieceIdx = 0) {
-    const sb = this.$('#swBoard');
-    BOARD_THEMES.forEach((t, i) => {
-      const d = document.createElement('div');
-      d.className = 'sw' + (i === boardIdx ? ' on' : '');
-      d.title = t.nome;
-      d.style.background = `linear-gradient(135deg, ${hex(t.light)} 50%, ${hex(t.dark)} 50%)`;
-      d.onclick = () => onBoard(i);
-      sb.appendChild(d);
-    });
-    const sp = this.$('#swPieces');
-    PIECE_THEMES.forEach((t, i) => {
-      const d = document.createElement('div');
-      d.className = 'sw' + (i === pieceIdx ? ' on' : '');
-      d.title = t.nome;
-      d.style.background = `linear-gradient(135deg, ${hex(t.p1)} 50%, ${hex(t.p2)} 50%)`;
-      d.onclick = () => onPiece(i);
-      sp.appendChild(d);
-    });
+    const renderCards = (containerId, data, currentIdx, isBoard, callback) => {
+      const container = this.$(containerId);
+      if(!container) return;
+      container.innerHTML = '';
+      data.forEach((t, i) => {
+        const btn = document.createElement('button');
+        btn.className = 'btn' + (i === currentIdx ? ' prim' : '');
+        btn.style.marginBottom = '0';
+        btn.style.height = '60px';
+        btn.style.display = 'flex';
+        btn.style.flexDirection = 'column';
+        btn.style.justifyContent = 'center';
+        btn.style.alignItems = 'center';
+        btn.style.gap = '4px';
+        
+        let c1, c2;
+        if(isBoard) { c1 = hex(t.light); c2 = hex(t.dark); }
+        else { c1 = hex(t.p1); c2 = hex(t.p2); }
+        
+        btn.innerHTML = `<div style="font-size:12px; white-space:normal; line-height:1.1; font-weight:bold">${t.nome}</div>
+                         <div style="width:40px;height:12px;border-radius:6px;background:linear-gradient(90deg, ${c1} 50%, ${c2} 50%); border:1px solid rgba(255,255,255,0.2)"></div>`;
+        btn.onclick = () => callback(i);
+        container.appendChild(btn);
+      });
+    };
+    
+    renderCards('#arenaGrid', BOARD_THEMES, boardIdx, true, onBoard);
+    renderCards('#skinGrid', PIECE_THEMES, pieceIdx, false, onPiece);
   }
 
   updateBoardSwatches(idx) {
-    document.querySelectorAll('#swBoard .sw').forEach((el, j) =>
-      el.classList.toggle('on', j === idx)
+    document.querySelectorAll('#arenaGrid .btn').forEach((el, j) =>
+      el.classList.toggle('prim', j === idx)
     );
   }
 
   updatePieceSwatches(idx) {
-    document.querySelectorAll('#swPieces .sw').forEach((el, j) =>
-      el.classList.toggle('on', j === idx)
+    document.querySelectorAll('#skinGrid .btn').forEach((el, j) =>
+      el.classList.toggle('prim', j === idx)
     );
   }
 }

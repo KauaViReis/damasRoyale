@@ -9,6 +9,7 @@
 # Pastas de IDE e Editores
 .vscode/
 .agents/
+relatorios/
 .claude/
 .idea/
 *.suo
