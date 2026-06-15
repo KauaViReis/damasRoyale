@@ -17,6 +17,10 @@ export class FXManager {
     this.shakeIntensity = 0;
     this.cameraBasePos = new THREE.Vector3();
 
+    /* Fireworks */
+    this.fireworksOn = false;
+    this.fwColor = 0xffffff;
+
     /* Geometrias reutilizáveis */
     this.discGeo = new THREE.CircleGeometry(0.34, 40);
     this.ringGeo = new THREE.RingGeometry(0.40, 0.47, 44);
@@ -219,6 +223,16 @@ export class FXManager {
     this.ghostMesh.visible = false;
   }
 
+  /* ====== FOGOS DE ARTIFÍCIO ====== */
+  startFireworks(colorHex) {
+    this.fireworksOn = true;
+    this.fwColor = colorHex;
+  }
+
+  stopFireworks() {
+    this.fireworksOn = false;
+  }
+
   /* Atualização por frame (chamada no loop principal) */
   update(time, dt) {
     /* Shake da câmera */
@@ -250,9 +264,28 @@ export class FXManager {
       if (m.userData.kind === 'ring') m.rotation.z = time * 0.8;
     }
 
+    /* Fireworks (Confetti) */
+    if (this.fireworksOn) {
+      const count = Math.floor(Math.random() * 3) + 1;
+      for (let i = 0; i < count; i++) {
+        const mat = new THREE.MeshBasicMaterial({ color: this.fwColor, transparent: true });
+        const m = new THREE.Mesh(this.particleGeo, mat);
+        m.position.set((Math.random() - 0.5) * 16, 8 + Math.random() * 4, (Math.random() - 0.5) * 16);
+        m.userData = {
+          vel: new THREE.Vector3((Math.random() - 0.5) * 4, -1 - Math.random() * 2, (Math.random() - 0.5) * 4),
+          life: 0,
+          maxLife: 3 + Math.random() * 2,
+          gravity: -2
+        };
+        const s = 1.0 + Math.random();
+        m.scale.set(s, s, s);
+        this.scene.add(m);
+        this.particles.push(m);
+      }
+    }
+
     /* Atualizar partículas */
     if (this.particles.length === 0) return;
-    const gravity = -15;
     let writeIdx = 0;
     for (let i = 0; i < this.particles.length; i++) {
       const p = this.particles[i];
@@ -267,7 +300,8 @@ export class FXManager {
       p.position.x += vel.x * dt;
       p.position.y += vel.y * dt;
       p.position.z += vel.z * dt;
-      vel.y += gravity * dt;
+      const g = p.userData.gravity !== undefined ? p.userData.gravity : -15;
+      vel.y += g * dt;
       const alpha = 1 - (t / p.userData.maxLife);
       p.material.opacity = alpha;
       p.rotation.x += dt * 4;

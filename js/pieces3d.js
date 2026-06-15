@@ -87,12 +87,12 @@ export function addCrown(piece, geos, goldMat, animate) {
   }
 }
 
-export async function animateStep(piece, step, grid, onCapture) {
+export async function animateStep(piece, step, grid, onCapture, slowMotion = false) {
   const from = worldPos(piece.r, piece.c);
   const to = worldPos(step.r, step.c);
   const isCap = step.capR !== undefined;
   const dist = Math.hypot(to.x - from.x, to.z - from.z);
-  const dur = Math.min(620, 220 + dist * 70);
+  const dur = Math.min(620, 220 + dist * 70) * (slowMotion ? 3.5 : 1);
   const arc = isCap ? 0.55 : 0.16;
 
   let victim = null;
@@ -108,7 +108,7 @@ export async function animateStep(piece, step, grid, onCapture) {
   /* Animação de captura (paralela) */
   const capAnim = victim ? (async () => {
     await sleep(dur * 0.42);
-    if (onCapture) onCapture(victim, step);
+    if (onCapture) onCapture(victim, step, slowMotion);
     const m = victim.mesh;
     await tween(300, k => {
       const e = easeIO(k);

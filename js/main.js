@@ -370,9 +370,9 @@ function showTargets() {
   }
 }
 
-function onCaptureFx(victim, s) {
+function onCaptureFx(victim, s, slowMotion = false) {
   audio.capture();
-  fx.shake(0.3);
+  fx.shake(slowMotion ? 0.6 : 0.3);
   vibrate(40);
   fx.spawnCaptureParticles(s.capR, s.capC, moverColorHex(victim.player));
   scene.remove(victim.mesh);
@@ -400,8 +400,15 @@ async function chooseDest(r, c) {
   const step = seqs[0].steps[stepIdx];
   state = ST.anim;
   fx.clearFx();
+  const isLastStep = (stepIdx === seqs[0].steps.length - 1);
+  let slowMotion = false;
+  if (isLastStep) {
+    const simBd = new Int8Array(bd);
+    applyMove(simBd, seqs[0]);
+    if (genMoves(simBd, -turn).length === 0) slowMotion = true;
+  }
 
-  await animateStep(selected, step, grid, onCaptureFx);
+  await animateStep(selected, step, grid, onCaptureFx, slowMotion);
   fx.spawnLandingDust(step.r, step.c, moverColorHex(turn));
   if (step.capR === undefined) audio.move();
 
@@ -502,8 +509,15 @@ async function playScriptedMove(move) {
   refreshTurnUI();
   const piece = grid[idx(move.from[0], move.from[1])];
   selected = piece;
-  for (const s of move.steps) {
-    await animateStep(piece, s, grid, onCaptureFx);
+  for (let i = 0; i < move.steps.length; i++) {
+    const s = move.steps[i];
+    let slowMotion = false;
+    if (i === move.steps.length - 1) {
+      const simBd = new Int8Array(bd);
+      applyMove(simBd, move);
+      if (genMoves(simBd, -turn).length === 0) slowMotion = true;
+    }
+    await animateStep(piece, s, grid, onCaptureFx, slowMotion);
     fx.spawnLandingDust(s.r, s.c, moverColorHex(turn));
     if (s.capR === undefined) audio.move();
     await sleep(60);
@@ -567,7 +581,10 @@ function gameOver(winner, reason = '', fromServer = false) {
   ui.setPresence(null);
   ui.showEvalBar(false);
   ui.setActions({ hint: false, resign: false, draw: false, claim: false, emote: false, leaveWatch: false });
-  if (winner !== 0) winCount[String(winner)]++;
+  if (winner !== 0) {
+    winCount[String(winner)]++;
+    fx.startFireworks(moverColorHex(winner));
+  }
   ui.updateScore(capCount, winCount, mode, pieceThemeIdx);
   audio.win();
   ui.showGameOver(winner, capCount, mode, pieceThemeIdx, REASON_TXT[reason] || '');
@@ -587,6 +604,7 @@ function resetMatchState(animatePieces = false) {
   ui.setPresence(null);
   deselect();
   fx.clearLastMove();
+  fx.stopFireworks();
   capCount = { '1': 0, '-1': 0 };
   quietKingMoves = 0;
   repMap.clear();
