@@ -533,8 +533,8 @@ body {
 
 #histToggle:hover { transform: scale(1.08); }
 
-/* ===== BOTÕES DE CÂMERA (VISÃO AÉREA + MOVER) ===== */
-#camToggle, #panToggle {
+/* ===== BOTÕES DE CÂMERA (VISÃO AÉREA + MOVER + ZOOM) ===== */
+#camToggle, #panToggle, #zoomIn, #zoomOut {
   position: fixed;
   right: 18px;
   z-index: 7;
@@ -551,8 +551,10 @@ body {
 
 #camToggle { top: calc(50% - 26px); transform: translateY(-50%); }
 #panToggle { top: calc(50% + 26px); transform: translateY(-50%); }
+#zoomIn { top: calc(50% - 78px); transform: translateY(-50%); display: none; }
+#zoomOut { top: calc(50% + 78px); transform: translateY(-50%); display: none; }
 
-#camToggle:hover, #panToggle:hover { transform: translateY(-50%) scale(1.08); }
+#camToggle:hover, #panToggle:hover, #zoomIn:hover, #zoomOut:hover { transform: translateY(-50%) scale(1.08); }
 
 #camToggle.on, #panToggle.on {
   border-color: var(--acc);
@@ -1342,7 +1344,8 @@ body {
   #presenceBar { width: calc(100vw - 24px); text-align: center; top: 198px; }
   .statGrid { grid-template-columns: repeat(2, 1fr); }
   #emotePalette { bottom: 64px; }
-  #camToggle, #panToggle { right: 12px; }
+  #camToggle, #panToggle, #zoomIn, #zoomOut { right: 12px; }
+  #zoomIn, #zoomOut { display: flex; }
   #evalBar { left: 8px; padding: 8px 6px; top: 56%; }
   #evalBar .evalTrack { height: 110px; }
   #evalTxt { max-height: 60px; }

@@ -555,6 +555,9 @@ function gameOver(winner, reason = '', fromServer = false) {
   if (state === ST.over) return;
   state = ST.over;
   cinematicOrbit = true;
+  input.target.set(0, -0.1, 0);
+  input.radius = input.fitRadius();
+  input.syncCamera();
   ui.showDrawOffer(false);
   ui.setPresence(null);
   ui.showEvalBar(false);
@@ -1138,6 +1141,16 @@ ui.$('#panToggle').onclick = () => {
   input.panMode = !input.panMode;
   ui.$('#panToggle').classList.toggle('on', input.panMode);
   ui.toast(input.panMode ? 'MODO MOVER: ARRASTE O TABULEIRO' : 'MODO GIRAR');
+};
+
+/* Botões de zoom (mobile) */
+ui.$('#zoomIn').onclick = () => {
+  input.radius = Math.max(input.radius * 0.85, input.minRadius);
+  input.syncCamera();
+};
+ui.$('#zoomOut').onclick = () => {
+  input.radius = Math.min(input.radius * 1.15, input.maxRadius);
+  input.syncCamera();
 };
 
 /* Música de fundo (P1) */
