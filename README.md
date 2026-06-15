@@ -24,6 +24,9 @@ A interface conta com uma estética premium em *glassmorphism* escuro e detalhes
 *O ranking será atualizado automaticamente em breve pelo GitHub Actions!*
 <!-- TOP_RANKING_END -->
 
+<!-- TOTAL_MATCHES_START -->
+<!-- TOTAL_MATCHES_END -->
+
 ---
 
 ## 🎮 Modos de Jogo

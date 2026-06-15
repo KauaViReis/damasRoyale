@@ -53,23 +53,37 @@ async function updateReadme() {
     const ultimaAtualizacao = new Date().toLocaleString('pt-BR', dateOpts);
     rankingMarkdown += `\n*Última atualização: ${ultimaAtualizacao} (Automático)*\n`;
 
+    // Busca o total de partidas já disputadas
+    // Assumindo que o histórico ou partidas estão na coleção 'match_history' ou 'games'
+    const gamesSnapshot = await db.collection('match_history').count().get();
+    const totalGames = gamesSnapshot.data().count;
+
     // Localiza e modifica o README.md na raiz do repositório
     const readmePath = path.join(__dirname, '..', '..', 'README.md');
-    const readmeContent = fs.readFileSync(readmePath, 'utf8');
+    let readmeContent = fs.readFileSync(readmePath, 'utf8');
 
+    // --- REPLACE RANKING ---
     const startTag = '<!-- TOP_RANKING_START -->';
     const endTag = '<!-- TOP_RANKING_END -->';
-
-    const regex = new RegExp(`(${startTag})[\\s\\S]*?(${endTag})`);
+    const regexRanking = new RegExp(`(${startTag})[\\s\\S]*?(${endTag})`);
     
-    if (!readmeContent.match(regex)) {
+    if (!readmeContent.match(regexRanking)) {
       console.error("ERRO: As tags 'TOP_RANKING_START' e 'END' não foram encontradas no README.md");
       process.exit(1);
     }
+    readmeContent = readmeContent.replace(regexRanking, `$1\n\n${rankingMarkdown}\n$2`);
 
-    const newContent = readmeContent.replace(regex, `$1\n\n${rankingMarkdown}\n$2`);
+    // --- REPLACE TOTAL MATCHES ---
+    const startMatchTag = '<!-- TOTAL_MATCHES_START -->';
+    const endMatchTag = '<!-- TOTAL_MATCHES_END -->';
+    const regexMatches = new RegExp(`(${startMatchTag})[\\s\\S]*?(${endMatchTag})`);
     
-    fs.writeFileSync(readmePath, newContent, 'utf8');
+    if (readmeContent.match(regexMatches)) {
+      const matchText = `> 🔥 Já foram disputadas **${totalGames}** partidas épicas no Damas Royale!`;
+      readmeContent = readmeContent.replace(regexMatches, `$1\n${matchText}\n$2`);
+    }
+    
+    fs.writeFileSync(readmePath, readmeContent, 'utf8');
     console.log("SUCESSO: README.md atualizado com os últimos dados do Firebase!");
     
   } catch (err) {
