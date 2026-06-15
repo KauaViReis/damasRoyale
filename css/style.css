@@ -1336,8 +1336,16 @@ body {
   .prow b { font-size: 13px; }
   #hint { display: none; }
   #actions { left: 12px; bottom: 12px; right: 70px; flex-wrap: wrap; }
+  /* Rótulos ocultos → ícone sozinho; garante área de toque de 44×44px
+     (mesmo padrão dos botões-toggle) para evitar alvos pequenos demais */
+  .actBtn {
+    min-width: 44px; min-height: 44px;
+    justify-content: center; padding: 9px;
+  }
   .actBtn span { display: none; }
+  .actBtn#btnClaimWin { min-width: 0; }
   .actBtn#btnClaimWin span { display: inline; }
+  #emotePalette button { min-width: 44px; min-height: 44px; }
   #drawOfferBar { bottom: 120px; width: calc(100vw - 24px); justify-content: center; flex-wrap: wrap; }
   #replayBar { width: calc(100vw - 24px); flex-wrap: wrap; justify-content: center; }
   #rpSlider { width: 100%; order: 5; }

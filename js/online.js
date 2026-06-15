@@ -664,10 +664,12 @@ export class OnlineManager {
   async declineChallenge(challenge) {
     if (!this.ready) return;
     const f = this.f;
+    /* Apenas marca como recusado; quem desafiou recebe o status e
+       apaga o doc (evita que o evento 'removed' chegue antes de
+       'declined' e seja interpretado como cancelamento). */
     await f.updateDoc(f.doc(this.db, 'challenges', challenge.id), {
       status: 'declined'
-    });
-    await f.deleteDoc(f.doc(this.db, 'challenges', challenge.id)).catch(() => {});
+    }).catch(() => {});
   }
 
   async cancelOutgoingChallenge() {

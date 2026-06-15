@@ -65,6 +65,10 @@ function isDev() {
   const n = (ui.$('#nickInput').value || '').trim().toUpperCase();
   return n === 'KAUÃ' || n === 'KAUA';
 }
+/* Dica disponível fora do online; no online apenas para o dev */
+function canUseHint() {
+  return mode !== 'online' || isDev();
+}
 let depth = 4;
 let allMoves = [];
 let selected = null, seqs = [], stepIdx = 0;
@@ -629,7 +633,7 @@ function newGame() {
   ui.updateTimer(time1, time2);
   ui.updateScore(capCount, winCount, mode, pieceThemeIdx);
   ui.setActions({
-    hint: mode !== 'online' || isDev(),
+    hint: canUseHint(),
     resign: mode === 'pve' || (mode === 'online' && !spectating),
     draw: mode === 'online' && !spectating,
     emote: mode === 'online' && !spectating,
@@ -1051,10 +1055,11 @@ async function challengePlayer(player) {
         ui.hideOverlay('challengeWaitPanel');
         await online.cancelOutgoingChallenge(); /* Limpa doc */
       },
-      () => {
+      async () => {
         cleanupOutgoingChallenge();
         ui.hideOverlay('challengeWaitPanel');
         ui.toast('DESAFIO RECUSADO PELO ADVERSÁRIO', true);
+        await online.cancelOutgoingChallenge(); /* Limpa doc após recusa */
       },
       () => {
         cleanupOutgoingChallenge();
@@ -1452,7 +1457,7 @@ document.querySelectorAll('#emotePalette button').forEach(b => {
 
 /* --- Barra de ações em partida --- */
 ui.$('#btnHint').onclick = () => {
-  if (state !== ST.human || mode === 'online') return;
+  if (state !== ST.human || !canUseHint()) return;
   const m = getHint(bd, turn);
   if (!m) return;
   deselect();
