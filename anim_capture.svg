@@ -1,0 +1,49 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 150 150" width="150" height="150">
+  <defs>
+    <!-- Sombra para dar profundidade -->
+    <filter id="shadow" x="-30%" y="-30%" width="160%" height="160%">
+      <feDropShadow dx="2" dy="4" stdDeviation="2.5" flood-opacity="0.6"/>
+    </filter>
+  </defs>
+
+  <rect x="0" y="0" width="150" height="150" fill="#221710"/>
+  <rect x="50" y="0" width="50" height="50" fill="#E8D5B0"/>
+  <rect x="0" y="50" width="50" height="50" fill="#E8D5B0"/>
+  <rect x="100" y="50" width="50" height="50" fill="#E8D5B0"/>
+  <rect x="50" y="100" width="50" height="50" fill="#E8D5B0"/>
+
+  <!-- Escura em (1,1) = cx:75, cy:75 -->
+  <g transform="translate(75, 75)">
+    <circle cx="0" cy="0" r="18" fill="#3A2418" stroke="#1A0D08" stroke-width="2" filter="url(#shadow)"/>
+    <circle cx="0" cy="0" r="10" fill="none" stroke="#1A0D08" stroke-width="1.5" opacity="0.5"/>
+    <!-- Some de vez na captura, volta no fim -->
+    <animate attributeName="opacity" values="1;1;0;0;1" keyTimes="0; 0.42; 0.55; 0.9; 1" dur="2.5s" repeatCount="indefinite" />
+  </g>
+
+  <!-- Clara pula de (2,2) -> (0,0) (125,125 -> 25,25) -->
+  <g>
+    <!-- Movimento Base (Translate) -->
+    <animateTransform attributeName="transform" type="translate" 
+      values="125,125; 125,125; 25,25; 25,25; 125,125" 
+      keyTimes="0; 0.2; 0.5; 0.9; 1" 
+      calcMode="spline" keySplines="0.4 0 0.6 1; 0.4 0 0.6 1; 0 0 1 1; 0 0 1 1"
+      dur="2.5s" repeatCount="indefinite"/>
+    
+    <!-- Pulo (Scale simulando altura Z) -->
+    <g>
+      <animateTransform attributeName="transform" type="scale" 
+        values="1; 1; 1.5; 1; 1; 1" 
+        keyTimes="0; 0.2; 0.35; 0.5; 0.9; 1" 
+        dur="2.5s" repeatCount="indefinite"/>
+      
+      <!-- Corpo da Peça -->
+      <circle cx="0" cy="0" r="18" fill="#F5EFE0" stroke="#7B4A2D" stroke-width="2" filter="url(#shadow)"/>
+      <circle cx="0" cy="0" r="10" fill="none" stroke="#7B4A2D" stroke-width="1.5" opacity="0.4"/>
+      
+      <!-- Coroa Dourada que aparece quando vira Dama no final -->
+      <path d="M-7 -2 L-9 6 L9 6 L7 -2 L0 3 Z" fill="#D9AC3C" opacity="0" filter="url(#shadow)">
+        <animate attributeName="opacity" values="0; 0; 1; 1; 0" keyTimes="0; 0.5; 0.55; 0.9; 1" dur="2.5s" repeatCount="indefinite" />
+      </path>
+    </g>
+  </g>
+</svg>

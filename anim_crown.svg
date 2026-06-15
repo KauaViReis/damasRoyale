@@ -1,0 +1,48 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 80" width="150" height="120">
+  <defs>
+    <!-- Filtro de brilho externo (Neon Dourado) -->
+    <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="4" result="blur" />
+      <feMerge>
+        <feMergeNode in="blur" />
+        <feMergeNode in="blur" />
+        <feMergeNode in="SourceGraphic" />
+      </feMerge>
+    </filter>
+
+    <!-- Gradiente Dourado com animação de feixe de luz passando -->
+    <linearGradient id="goldGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#E3A94E" />
+      <stop offset="30%" stop-color="#B97F26" />
+      
+      <!-- O Feixe de Luz branco/amarelo claro -->
+      <stop offset="40%" stop-color="#FFFFFF">
+        <animate attributeName="offset" values="-50%; 150%; 150%" keyTimes="0; 0.6; 1" dur="3s" repeatCount="indefinite"/>
+      </stop>
+      
+      <stop offset="60%" stop-color="#F6D27A" />
+      <stop offset="100%" stop-color="#E3A94E" />
+    </linearGradient>
+  </defs>
+
+  <!-- Agrupamento para o movimento flutuante (Hover) super suave -->
+  <g filter="url(#glow)">
+    <animateTransform 
+      attributeName="transform" 
+      type="translate" 
+      values="18,18; 18,8; 18,18" 
+      dur="3s" 
+      keyTimes="0; 0.5; 1" 
+      calcMode="spline" 
+      keySplines="0.42 0 0.58 1; 0.42 0 0.58 1" 
+      repeatCount="indefinite" />
+    
+    <g fill="url(#goldGrad)">
+      <path d="M6 40 L4 14 L19 27 L32 6 L45 27 L60 14 L58 40 Z" />
+      <rect x="6" y="43" width="52" height="6" rx="3" />
+      <circle cx="4" cy="12" r="4.5" />
+      <circle cx="32" cy="5" r="5" />
+      <circle cx="60" cy="12" r="4.5" />
+    </g>
+  </g>
+</svg>
