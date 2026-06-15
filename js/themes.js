@@ -4,6 +4,13 @@
 
 export const BOARD_THEMES = [
   { 
+    nome: 'PADRÃO CLÁSSICO', 
+    light: 0xE8D5B0, dark: 0x7B4A2D, frame: 0x3A2418, 
+    bg: 0x14110D, table: 0x221710,
+    fogColor: 0x14110D, fogNear: 16, fogFar: 42,
+    weather: 'none'
+  },
+  { 
     nome: 'TAVERNA MEDIEVAL', 
     light: 0xE8D5B0, dark: 0x7B4A2D, frame: 0x3A2418, 
     bg: 0x14110D, table: 0x221710,
@@ -34,6 +41,7 @@ export const BOARD_THEMES = [
 ];
 
 export const PIECE_THEMES = [
+  { nome: 'PADRÃO CLÁSSICO', p1: 0xF5EFE0, p2: 0x23201C, n1: 'CLARAS', n2: 'ESCURAS', shape: 'standard', mat: 'phong' },
   { nome: 'MADEIRA IMPERIAL', p1: 0xF5EFE0, p2: 0x23201C, n1: 'CLARAS', n2: 'ESCURAS', shape: 'standard', mat: 'phong' },
   { nome: 'CRISTAL ENCANTADO', p1: 0xD4E4ED, p2: 0x101318, n1: 'GELO', n2: 'QUARTZO', shape: 'crystal', mat: 'physical' },
   { nome: 'ESCUDOS ESPARTANOS', p1: 0xB87333, p2: 0xA8B0B8, n1: 'BRONZE', n2: 'PRATA', shape: 'spartan', mat: 'metal' },

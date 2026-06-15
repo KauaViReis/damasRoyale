@@ -28,12 +28,15 @@ A interface conta com uma estética premium em *glassmorphism* escuro e detalhes
 
 ## ⚡ Recursos Adicionais Premium
 
+*   **Arenas Imersivas e Clima Dinâmico**: Jogue em ambientes 3D como Taverna Medieval, Jardim Zen, Cyberpunk ou Vulcão. A neblina e as partículas de clima (chuva, poeira, folhas de cerejeira, fagulhas) reagem ao tema escolhido em tempo real.
+*   **Menu de Personalização (Loadout)**: Escolha sua Arena (renderizada localmente para máxima performance) e as Skins do seu exército (sincronizadas com o oponente) antes da batalha.
+*   **Finalizações Cinematográficas**: O motor do jogo prevê o lance final da partida, aplicando **Câmera Lenta (Bullet-Time)** no último movimento, seguido de uma chuva de confetes/fogos de artifício 3D na cor do exército vencedor.
+*   **Otimização Mobile**: Botões dedicados de Zoom in/out e centralização de câmera inteligente garantem a melhor experiência em telas pequenas.
 *   **Sistema de Desafios Diretos**: Visualize jogadores online ativos na nuvem e envie um desafio imediato.
-*   **Recuperação de Sessão (Session Recovery)**: Em caso de queda de conexão ou recarregamento acidental da página, a partida é retomada automaticamente de onde parou.
+*   **Recuperação de Sessão (Session Recovery)**: Em caso de queda de conexão, a partida é retomada automaticamente de onde parou.
 *   **Relógio de Jogo Sincronizado**: Controle de tempo online competitivo (Blitz) no formato Fischer (tempo base + acréscimo por lance).
-*   **Reações e Emotes Rápidos**: Comunique-se usando balões de emotes flutuantes em 3D sobre o tabuleiro.
-*   **Google Sign-In**: Login integrado para persistir estatísticas, taxa de vitória, melhor sequência de vitórias (Streak) e histórico em múltiplos dispositivos.
-*   **Efeitos Visuais**: Partículas ao capturar peças ou coroar Damas, tremor de câmera em jogadas de impacto e efeito de iluminação Bloom.
+*   **Reações e Emotes Rápidos**: Comunique-se usando balões flutuantes em 3D sobre o tabuleiro.
+*   **Google Sign-In**: Login integrado para persistir estatísticas, taxa de vitória e histórico em múltiplos dispositivos.
 *   **Som Sintetizado**: Feedback de áudio sintetizado em tempo real via Web Audio API.
 
 ---

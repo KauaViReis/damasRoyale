@@ -311,7 +311,7 @@ export class FXManager {
         const m = new THREE.Mesh(this.particleGeo, mat);
         m.position.set(px, py, pz);
         m.scale.set(sx, sy, sz);
-        m.userData = { vel: new THREE.Vector3(vx, vy, vz), life: 0, maxLife: ml, gravity: grav };
+        m.userData = { vel: new THREE.Vector3(vx, vy, vz), life: 0, maxLife: ml, gravity: grav, sharedMat: true };
         this.scene.add(m);
         this.particles.push(m);
       }
@@ -346,7 +346,9 @@ export class FXManager {
       const t = p.userData.life;
       if (t >= p.userData.maxLife) {
         this.scene.remove(p);
-        p.material.dispose();
+        if (!p.userData.sharedMat) {
+          p.material.dispose();
+        }
         continue;
       }
       const vel = p.userData.vel;
