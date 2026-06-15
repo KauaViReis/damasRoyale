@@ -1,0 +1,12 @@
+{
+  "name": "damas-readme-updater",
+  "version": "1.0.0",
+  "description": "Script de automação para atualizar o README do Damas Royale",
+  "main": "update_readme.js",
+  "scripts": {
+    "start": "node update_readme.js"
+  },
+  "dependencies": {
+    "firebase-admin": "^12.0.0"
+  }
+}

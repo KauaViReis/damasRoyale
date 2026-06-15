@@ -18,6 +18,14 @@ A interface conta com uma estética premium em *glassmorphism* escuro e detalhes
 
 ---
 
+## 🏆 Top 3 Grandes Mestres (Ao Vivo)
+
+<!-- TOP_RANKING_START -->
+*O ranking será atualizado automaticamente em breve pelo GitHub Actions!*
+<!-- TOP_RANKING_END -->
+
+---
+
 ## 🎮 Modos de Jogo
 
 | Modo | Descrição |
