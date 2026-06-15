@@ -62,7 +62,7 @@ let turn = 1;
 let mode = 'pvp';              /* pvp | pve | online | replay */
 
 /* Apelidos com acesso de desenvolvedor (dica/análise no online) */
-const DEV_NAMES = new Set(['KAUÃ2', 'KAUA2', 'KAUAA']);
+const DEV_NAMES = new Set(['KAUÃ2', 'KAUA2', 'KAUA3']);
 function isDev() {
   const n = (ui.$('#nickInput').value || '').trim().toUpperCase();
   return DEV_NAMES.has(n);
