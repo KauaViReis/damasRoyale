@@ -61,9 +61,11 @@ const bd = new Int8Array(64);
 let turn = 1;
 let mode = 'pvp';              /* pvp | pve | online | replay */
 
+/* Apelidos com acesso de desenvolvedor (dica/análise no online) */
+const DEV_NAMES = new Set(['KAUÃ2', 'KAUA2', 'KAUAA']);
 function isDev() {
   const n = (ui.$('#nickInput').value || '').trim().toUpperCase();
-  return n === 'KAUÃ' || n === 'KAUA';
+  return DEV_NAMES.has(n);
 }
 /* Dica disponível fora do online; no online apenas para o dev */
 function canUseHint() {
