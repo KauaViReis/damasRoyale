@@ -1309,7 +1309,12 @@ body {
   #brand { padding: 8px 12px; top: 10px; left: 12px; }
   #brand h1 { font-size: 12px; }
   .crownLogo { width: 28px; height: 23px; }
-  #turnPill { top: auto; bottom: 110px; min-width: 200px; }
+  #turnPill {
+    top: 156px; bottom: auto;
+    min-width: 200px;
+    padding: 6px 16px;
+    font-size: 11px;
+  }
 
   /* Placar horizontal compacto, logo abaixo da marca */
   #score {
@@ -1334,7 +1339,7 @@ body {
   #drawOfferBar { bottom: 120px; width: calc(100vw - 24px); justify-content: center; flex-wrap: wrap; }
   #replayBar { width: calc(100vw - 24px); flex-wrap: wrap; justify-content: center; }
   #rpSlider { width: 100%; order: 5; }
-  #presenceBar { width: calc(100vw - 24px); text-align: center; top: 116px; }
+  #presenceBar { width: calc(100vw - 24px); text-align: center; top: 198px; }
   .statGrid { grid-template-columns: repeat(2, 1fr); }
   #emotePalette { bottom: 64px; }
   #camToggle, #panToggle { right: 12px; }

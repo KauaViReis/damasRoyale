@@ -41,6 +41,8 @@ function savePrefs() {
   prefs.musicVol = audio.musicVolume;
   prefs.evalOn = evalOn;
   prefs.haptics = hapticsOn;
+  prefs.fogNear = fogNearMul;
+  prefs.fogFar = fogFarMul;
   try { localStorage.setItem(PREFS_KEY, JSON.stringify(prefs)); } catch { /* ok */ }
 }
 
@@ -120,6 +122,8 @@ let tcChoice = prefs.tcOnline ?? 0;
 /* Melhorias do relatório */
 let evalOn = !!prefs.evalOn;          /* barra de vantagem da IA */
 let hapticsOn = prefs.haptics !== false;  /* vibração (padrão ligada) */
+let fogNearMul = prefs.fogNear ?? 1.6;   /* multiplicador de fog perto */
+let fogFarMul  = prefs.fogFar  ?? 3.8;   /* multiplicador de fog longe */
 
 /* ============ INICIALIZAÇÃO ============ */
 const canvas = document.getElementById('c3d');
@@ -1101,6 +1105,29 @@ ui.segBind('#segHaptics', v => {
   if (hapticsOn) vibrate(30);
 });
 
+/* Névoa da cena */
+{
+  const fogNearEl = ui.$('#fogNear');
+  const fogFarEl  = ui.$('#fogFar');
+  const fogNearV  = ui.$('#fogNearVal');
+  const fogFarV   = ui.$('#fogFarVal');
+  fogNearEl.value = fogNearMul;
+  fogFarEl.value  = fogFarMul;
+  fogNearV.textContent = fogNearMul.toFixed(1) + 'x';
+  fogFarV.textContent  = fogFarMul.toFixed(1) + 'x';
+  fogNearEl.oninput = e => {
+    fogNearMul = +e.target.value;
+    if (fogNearMul >= fogFarMul) { fogFarMul = fogNearMul + 0.2; fogFarEl.value = fogFarMul; fogFarV.textContent = fogFarMul.toFixed(1) + 'x'; }
+    fogNearV.textContent = fogNearMul.toFixed(1) + 'x';
+    savePrefs();
+  };
+  fogFarEl.oninput = e => {
+    fogFarMul = +e.target.value;
+    if (fogFarMul <= fogNearMul) { fogNearMul = fogFarMul - 0.2; fogNearEl.value = fogNearMul; fogNearV.textContent = fogNearMul.toFixed(1) + 'x'; }
+    fogFarV.textContent = fogFarMul.toFixed(1) + 'x';
+    savePrefs();
+  };
+}
 ui.$('#btnStart').onclick = () => {
   if (mode === 'online') return;
   ui.nameOverride = null;
@@ -1420,8 +1447,8 @@ let prevTime = 0;
      nítido (sem esmaecer ao dar zoom out) e deixa a atmosfera só no fundo.
      As razões reproduzem o visual original na distância padrão (~18 / ~42). */
   if (scene.fog) {
-    scene.fog.near = input.radius * 1.6;
-    scene.fog.far = input.radius * 3.8;
+    scene.fog.near = input.radius * fogNearMul;
+    scene.fog.far  = input.radius * fogFarMul;
   }
 
   /* Relógio (modos locais) */
