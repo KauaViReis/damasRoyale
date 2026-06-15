@@ -1416,6 +1416,14 @@ let prevTime = 0;
   const dt = t - prevTime;
   prevTime = t;
 
+  /* Névoa acompanha a distância da câmera: mantém o tabuleiro sempre
+     nítido (sem esmaecer ao dar zoom out) e deixa a atmosfera só no fundo.
+     As razões reproduzem o visual original na distância padrão (~18 / ~42). */
+  if (scene.fog) {
+    scene.fog.near = input.radius * 1.6;
+    scene.fog.far = input.radius * 3.8;
+  }
+
   /* Relógio (modos locais) */
   if ((state === ST.human || state === ST.ai) && timeLimit > 0 && mode !== 'online') {
     const ms = dt * 1000;

@@ -605,13 +605,35 @@ body {
   transition: height .5s cubic-bezier(.4, 0, .2, 1);
 }
 
-/* ===== SLIDER DE VOLUME ===== */
+/* ===== SLIDERS ===== */
 .rangeInput {
   width: 100%;
   margin-top: 10px;
   height: 4px;
   accent-color: var(--acc);
   cursor: pointer;
+}
+
+.fogControls .rangeInput + .rangeRow {
+  margin-top: 12px;
+}
+
+.rangeRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 10px;
+  letter-spacing: .14em;
+  color: var(--dim);
+  font-weight: 700;
+}
+
+.rangeRow b {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 11px;
+  letter-spacing: 0;
+  color: var(--acc-soft);
 }
 
 #history {
