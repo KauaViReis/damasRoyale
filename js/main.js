@@ -1064,6 +1064,13 @@ ui.$('#camToggle').onclick = async () => {
   ui.toast(td ? 'VISÃO AÉREA' : 'VISÃO LIVRE');
 };
 
+/* Modo Mover: arraste de 1 dedo desloca o tabuleiro (P0 mobile) */
+ui.$('#panToggle').onclick = () => {
+  input.panMode = !input.panMode;
+  ui.$('#panToggle').classList.toggle('on', input.panMode);
+  ui.toast(input.panMode ? 'MODO MOVER: ARRASTE O TABULEIRO' : 'MODO GIRAR');
+};
+
 /* Música de fundo (P1) */
 ui.setMusicUI(!!prefs.music, audio.musicVolume);
 ui.segBind('#segMusic', v => {

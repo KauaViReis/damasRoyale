@@ -24,6 +24,9 @@ export class InputManager {
     this.maxRadius = 40;
     this.panLimit = 6;          /* até onde o alvo pode se afastar do centro */
 
+    /* Modo "Mover": arraste de 1 dedo desloca a câmera (em vez de girar) */
+    this.panMode = false;
+
     /* Pointer tracking */
     this.pointers = new Map();
     this.dragging = false;
@@ -246,9 +249,13 @@ export class InputManager {
         if (this.panning) {
           this.pan(dx, dy);                       /* deslocamento lateral */
         } else if (this.moved > 4 && !this.isCustomDragging) {
-          this.theta -= dx * 0.0052;
-          this.phi = clamp(this.phi - dy * 0.0042, 0.28, 1.32);
-          this.syncCamera();
+          if (this.panMode) {
+            this.pan(dx, dy);                     /* modo Mover: 1 dedo desloca */
+          } else {
+            this.theta -= dx * 0.0052;
+            this.phi = clamp(this.phi - dy * 0.0042, 0.28, 1.32);
+            this.syncCamera();
+          }
         }
       } else if (this.pointers.size === 2) {
         const a = [...this.pointers.values()];

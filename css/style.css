@@ -123,7 +123,7 @@ body {
   gap: 10px;
   min-width: 230px;
   justify-content: center;
-  animation: fadeSlideDown .6s .1s ease-out both;
+  animation: fadeSlideDownC .6s .1s ease-out both;
 }
 
 #turnDot {
@@ -533,12 +533,10 @@ body {
 
 #histToggle:hover { transform: scale(1.08); }
 
-/* ===== BOTÃO DE CÂMERA (VISÃO AÉREA) ===== */
-#camToggle {
+/* ===== BOTÕES DE CÂMERA (VISÃO AÉREA + MOVER) ===== */
+#camToggle, #panToggle {
   position: fixed;
   right: 18px;
-  top: 50%;
-  transform: translateY(-50%);
   z-index: 7;
   width: 44px;
   height: 44px;
@@ -551,9 +549,12 @@ body {
   transition: transform .2s, border-color .2s, background .2s;
 }
 
-#camToggle:hover { transform: translateY(-50%) scale(1.08); }
+#camToggle { top: calc(50% - 26px); transform: translateY(-50%); }
+#panToggle { top: calc(50% + 26px); transform: translateY(-50%); }
 
-#camToggle.on {
+#camToggle:hover, #panToggle:hover { transform: translateY(-50%) scale(1.08); }
+
+#camToggle.on, #panToggle.on {
   border-color: var(--acc);
   background: rgba(227, 169, 78, .18);
 }
@@ -1238,6 +1239,12 @@ body {
   to   { opacity: 1; transform: translateY(0); }
 }
 
+/* Variante que preserva a centralização horizontal (translateX(-50%)) */
+@keyframes fadeSlideDownC {
+  from { opacity: 0; transform: translate(-50%, -16px); }
+  to   { opacity: 1; transform: translate(-50%, 0); }
+}
+
 @keyframes fadeSlideRight {
   from { opacity: 0; transform: translateX(-20px); }
   to   { opacity: 1; transform: translateX(0); }
@@ -1281,7 +1288,22 @@ body {
   #brand h1 { font-size: 12px; }
   .crownLogo { width: 28px; height: 23px; }
   #turnPill { top: auto; bottom: 110px; min-width: 200px; }
-  #score { top: auto; bottom: 152px; left: 12px; width: 158px; padding: 10px; }
+
+  /* Placar horizontal compacto, logo abaixo da marca */
+  #score {
+    top: 62px; left: 12px; right: 12px; bottom: auto;
+    width: auto; padding: 7px;
+    display: flex; flex-direction: row; gap: 8px;
+  }
+  #score h2 { display: none; }
+  #score .pcard {
+    flex: 1; min-width: 0; margin-bottom: 0; padding: 7px 10px;
+  }
+  #score .pname { font-size: 11px; letter-spacing: .04em; }
+  #score .prow { display: inline-flex; width: auto; gap: 4px; margin: 3px 8px 0 0; font-size: 9px; }
+  #score .prow b { font-size: 12px; }
+  #score .timer { margin: 3px 0 0; padding: 2px 6px; font-size: 12px; }
+
   .prow b { font-size: 13px; }
   #hint { display: none; }
   #actions { left: 12px; bottom: 12px; right: 70px; flex-wrap: wrap; }
@@ -1290,13 +1312,13 @@ body {
   #drawOfferBar { bottom: 120px; width: calc(100vw - 24px); justify-content: center; flex-wrap: wrap; }
   #replayBar { width: calc(100vw - 24px); flex-wrap: wrap; justify-content: center; }
   #rpSlider { width: 100%; order: 5; }
-  #presenceBar { width: calc(100vw - 24px); text-align: center; }
+  #presenceBar { width: calc(100vw - 24px); text-align: center; top: 116px; }
   .statGrid { grid-template-columns: repeat(2, 1fr); }
   #emotePalette { bottom: 64px; }
-  #camToggle { right: 12px; top: 42%; }
-  #evalBar { left: 8px; padding: 8px 6px; }
-  #evalBar .evalTrack { height: 120px; }
-  #evalTxt { max-height: 64px; }
+  #camToggle, #panToggle { right: 12px; }
+  #evalBar { left: 8px; padding: 8px 6px; top: 56%; }
+  #evalBar .evalTrack { height: 110px; }
+  #evalTxt { max-height: 60px; }
 }
 
 /* ===== PREFERS REDUCED MOTION ===== */
