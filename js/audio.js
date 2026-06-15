@@ -7,6 +7,12 @@ export class AudioManager {
   constructor() {
     this.ctx = null;
     this.muted = false;
+    /* Trilha sonora ambiente */
+    this.musicOn = false;
+    this.musicVolume = 0.5;
+    this.musicGain = null;
+    this._musicTimer = null;
+    this._chordIdx = 0;
   }
 
   toggleMute() {
@@ -18,6 +24,7 @@ export class AudioManager {
     if (!this.ctx) {
       this.ctx = new (window.AudioContext || window.webkitAudioContext)();
     }
+    if (this.ctx.state === 'suspended') this.ctx.resume();
     return this.ctx;
   }
 
@@ -89,5 +96,92 @@ export class AudioManager {
   error() {
     this._tone(220, 0.15, 'square', 0.03);
     this._tone(180, 0.12, 'square', 0.025, 0.08);
+  }
+
+  /* ============ TRILHA SONORA AMBIENTE ============
+     Pad medieval/estratégico gerado por osciladores — sem áudio externo.
+     Progressão lenta em lá menor (Am · F · G · C) com brilho ocasional. */
+  _CHORDS = [
+    [220.00, 261.63, 329.63], // Am
+    [174.61, 220.00, 261.63], // F
+    [196.00, 246.94, 392.00], // G
+    [261.63, 329.63, 392.00]  // C
+  ];
+
+  startMusic() {
+    this.musicOn = true;
+    try {
+      const ac = this._ensure();
+      if (!this.musicGain) {
+        this.musicGain = ac.createGain();
+        this.musicGain.gain.value = this.musicVolume * 0.12;
+        this.musicGain.connect(ac.destination);
+      }
+      if (this._musicTimer) return;
+      this._playChord();
+      this._musicTimer = setInterval(() => this._playChord(), 4800);
+    } catch (e) { /* silently fail */ }
+  }
+
+  stopMusic() {
+    this.musicOn = false;
+    if (this._musicTimer) { clearInterval(this._musicTimer); this._musicTimer = null; }
+    if (this.musicGain) {
+      try {
+        const ac = this._ensure();
+        this.musicGain.gain.setTargetAtTime(0, ac.currentTime, 0.3);
+      } catch (e) { /* ok */ }
+    }
+  }
+
+  toggleMusic() {
+    if (this.musicOn) this.stopMusic(); else this.startMusic();
+    return this.musicOn;
+  }
+
+  setMusicVolume(v) {
+    this.musicVolume = v;
+    if (this.musicGain) {
+      try {
+        const ac = this._ensure();
+        this.musicGain.gain.setTargetAtTime(v * 0.12, ac.currentTime, 0.1);
+      } catch (e) { /* ok */ }
+    }
+  }
+
+  _playChord() {
+    if (!this.musicOn) return;
+    try {
+      const ac = this._ensure();
+      if (!this.musicGain) return;
+      /* Reabre o ganho caso tenha sido fechado por stop anterior */
+      this.musicGain.gain.setTargetAtTime(this.musicVolume * 0.12, ac.currentTime, 0.1);
+      const chord = this._CHORDS[this._chordIdx % this._CHORDS.length];
+      this._chordIdx++;
+      const t = ac.currentTime, dur = 4.6;
+      chord.forEach((f, i) => {
+        const osc = ac.createOscillator();
+        const g = ac.createGain();
+        const flt = ac.createBiquadFilter();
+        flt.type = 'lowpass'; flt.frequency.value = 900;
+        osc.type = i === 0 ? 'triangle' : 'sine';
+        osc.frequency.value = f;
+        g.gain.setValueAtTime(0.0001, t);
+        g.gain.exponentialRampToValueAtTime(0.18, t + 1.2);
+        g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+        osc.connect(flt); flt.connect(g); g.connect(this.musicGain);
+        osc.start(t); osc.stop(t + dur + 0.1);
+      });
+      /* Brilho (oitava acima) a cada 2 acordes */
+      if (this._chordIdx % 2 === 0) {
+        const osc = ac.createOscillator(), g = ac.createGain();
+        osc.type = 'sine'; osc.frequency.value = chord[2] * 2;
+        g.gain.setValueAtTime(0.0001, t + 0.5);
+        g.gain.exponentialRampToValueAtTime(0.05, t + 1.5);
+        g.gain.exponentialRampToValueAtTime(0.0001, t + 3.5);
+        osc.connect(g); g.connect(this.musicGain);
+        osc.start(t + 0.5); osc.stop(t + 3.6);
+      }
+    } catch (e) { /* silently fail */ }
   }
 }

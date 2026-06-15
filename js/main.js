@@ -8,7 +8,7 @@ import {
   idx, initBoard, genMoves, applyMove, boardKey,
   serializeMove, deserializeMove, sameMove, moveToNotation
 } from './rules.js';
-import { bestMoveAI, getHint } from './ai.js';
+import { bestMoveAI, getHint, evaluate } from './ai.js';
 import { BOARD_THEMES, PIECE_THEMES } from './themes.js';
 import { AudioManager } from './audio.js';
 import { MoveHistory } from './history.js';
@@ -20,7 +20,7 @@ import { UIManager } from './ui.js';
 import { InputManager } from './input.js';
 import { OnlineManager } from './online.js';
 import { isFirebaseConfigured } from './firebase-config.js';
-import { sleep } from './utils.js';
+import { sleep, vibrate, setHaptics } from './utils.js';
 
 /* ============ PREFERÊNCIAS PERSISTIDAS ============ */
 const PREFS_KEY = 'damasRoyale.prefs';
@@ -37,6 +37,10 @@ function savePrefs() {
   prefs.nick = nick;
   prefs.fx = effectsOn;
   prefs.tcOnline = tcChoice;
+  prefs.music = audio.musicOn;
+  prefs.musicVol = audio.musicVolume;
+  prefs.evalOn = evalOn;
+  prefs.haptics = hapticsOn;
   try { localStorage.setItem(PREFS_KEY, JSON.stringify(prefs)); } catch { /* ok */ }
 }
 
@@ -113,6 +117,10 @@ let effectsOn = !!prefs.fx;
 let composer = null;
 let tcChoice = prefs.tcOnline ?? 0;
 
+/* Melhorias do relatório */
+let evalOn = !!prefs.evalOn;          /* barra de vantagem da IA */
+let hapticsOn = prefs.haptics !== false;  /* vibração (padrão ligada) */
+
 /* ============ INICIALIZAÇÃO ============ */
 const canvas = document.getElementById('c3d');
 const { scene, camera, renderer, materials, resize } = createScene(canvas);
@@ -126,7 +134,9 @@ const input = new InputManager(canvas, camera, () => input.syncCamera());
 const online = new OnlineManager();
 
 audio.muted = !!prefs.muted;
+audio.musicVolume = prefs.musicVol ?? 0.5;
 ui.setSoundIcon(audio.muted);
+setHaptics(hapticsOn);
 history.bind(document.getElementById('history'));
 
 /* ============ PEÇAS ============ */
@@ -245,6 +255,7 @@ function startTurn() {
   deselect();
   allMoves = genMoves(bd, turn);
   if (allMoves.length === 0) { gameOver(-turn, ''); return; }
+  refreshEvalBar();
 
   if (mode === 'pve' && turn === -1) {
     state = ST.ai;
@@ -293,11 +304,25 @@ function showTargets() {
 function onCaptureFx(victim, s) {
   audio.capture();
   fx.shake(0.3);
+  vibrate(40);
   fx.spawnCaptureParticles(s.capR, s.capC, moverColorHex(victim.player));
   scene.remove(victim.mesh);
   pieces = pieces.filter(p => p !== victim);
   capCount[String(turn)]++;
   ui.updateScore(capCount, winCount, mode, pieceThemeIdx);
+}
+
+/* Barra de vantagem (linha de análise): visível em local/máquina/replay,
+   oculta no online para não dar assistência indevida. */
+function refreshEvalBar() {
+  const visible = evalOn && mode !== 'online';
+  ui.showEvalBar(visible);
+  if (!visible) return;
+  const names = {
+    1: ui.pName(1, mode, pieceThemeIdx),
+    '-1': ui.pName(-1, mode, pieceThemeIdx)
+  };
+  ui.updateEvalBar(evaluate(bd), names);
 }
 
 async function chooseDest(r, c) {
@@ -348,6 +373,7 @@ async function finalizeMove(move) {
     ui.toast('DAMA! 👑');
     fx.spawnCrownParticles(last.r, last.c);
     fx.zoomPunch(3);
+    vibrate([50, 50]);
   }
   if (nCaps >= 2) { fx.zoomPunch(4); fx.shake(0.45); }
 
@@ -463,6 +489,7 @@ function gameOver(winner, reason = '', fromServer = false) {
   state = ST.over;
   ui.showDrawOffer(false);
   ui.setPresence(null);
+  ui.showEvalBar(false);
   ui.setActions({ hint: false, resign: false, draw: false, claim: false, emote: false, leaveWatch: false });
   if (winner !== 0) winCount[String(winner)]++;
   ui.updateScore(capCount, winCount, mode, pieceThemeIdx);
@@ -494,6 +521,7 @@ function resetMatchState() {
   history.clear();
   historyStack = [];
   ui.showUndo(false);
+  input.resetView();   /* recentraliza e reenquadra o tabuleiro */
 }
 
 function newGame() {
@@ -528,6 +556,7 @@ async function backToMenu() {
   ui.setActions({ hint: false, resign: false, draw: false, claim: false, emote: false, leaveWatch: false });
   ui.showDrawOffer(false);
   ui.setPresence(null);
+  ui.showEvalBar(false);
   state = ST.menu;
 }
 
@@ -555,6 +584,7 @@ function enterReplay(match) {
   ui.updateTimer(null, null);
   refreshTurnUI();
   ui.updateReplay(0, replayMoves.length, false);
+  refreshEvalBar();
 }
 
 function replayGoto(i) {
@@ -579,6 +609,7 @@ function replayGoto(i) {
   replayIdx = i;
   ui.updateScore(capCount, winCount, mode, pieceThemeIdx);
   ui.updateReplay(replayIdx, replayMoves.length, false);
+  refreshEvalBar();
 }
 
 async function replayNext(animate = true) {
@@ -611,6 +642,7 @@ async function replayNext(animate = true) {
   if (!animate) buildPieces();
   ui.updateScore(capCount, winCount, mode, pieceThemeIdx);
   ui.updateReplay(replayIdx, replayMoves.length, replayPlaying);
+  refreshEvalBar();
   return true;
 }
 
@@ -664,18 +696,36 @@ input.onPointerDown = (clientX, clientY) => {
       ui.toast('PEÇA DO ADVERSÁRIO', true); audio.error();
     }
   } else {
-    const discs = fx.activeFx.filter(m => m.userData.kind === 'disc');
-    hit = input.pick(clientX, clientY, discs);
-    if (!hit) hit = input.pick(clientX, clientY, squares);
-    if (hit) {
-      r = hit.object.userData.r; c = hit.object.userData.c;
-      if (selected && seqs.some(m => { const s = m.steps[stepIdx]; return s.r === r && s.c === c; })) {
-        chooseDest(r, c);
+    /* 1) Destino tem prioridade quando há peça selecionada */
+    let handled = false;
+    if (selected) {
+      const discs = fx.activeFx.filter(m => m.userData.kind === 'disc');
+      let dhit = input.pick(clientX, clientY, discs);
+      if (!dhit) dhit = input.pick(clientX, clientY, squares);
+      if (dhit) {
+        const tr = dhit.object.userData.r, tc = dhit.object.userData.c;
+        if (seqs.some(m => { const s = m.steps[stepIdx]; return s.r === tr && s.c === tc; })) {
+          chooseDest(tr, tc);
+          handled = true;
+        }
+      }
+    }
+    /* 2) Hitbox ampliado: seleciona a peça própria mais próxima do toque */
+    if (!handled) {
+      const mine = pieces.filter(p => p.player === turn);
+      const np = input.pickNearestPiece(clientX, clientY, mine, 42);
+      if (np && allMoves.some(m => m.from[0] === np.r && m.from[1] === np.c)) {
+        if (selected !== np) selectPiece(np);
+        isDragging = true;
+        input.isCustomDragging = true;
+        dragPiece = np;
+        input.dragPlane.constant = -0.12;
+        const wp = worldPos(np.r, np.c);
+        dragStartX = wp.x;
+        dragStartZ = wp.z;
       } else if (selected && stepIdx === 0) {
         deselect(); showCaptureRings();
       }
-    } else if (selected && stepIdx === 0) {
-      deselect(); showCaptureRings();
     }
   }
 };
@@ -1007,6 +1057,43 @@ ui.segBind('#segFx', async v => {
   ui.toast(effectsOn ? 'EFEITOS LIGADOS' : 'EFEITOS DESLIGADOS');
 });
 
+/* Câmera top-down (P0 mobile) */
+ui.$('#camToggle').onclick = async () => {
+  const td = await input.toggleTopDown();
+  ui.setCamButton(td);
+  ui.toast(td ? 'VISÃO AÉREA' : 'VISÃO LIVRE');
+};
+
+/* Música de fundo (P1) */
+ui.setMusicUI(!!prefs.music, audio.musicVolume);
+ui.segBind('#segMusic', v => {
+  if (v === '1') audio.startMusic(); else audio.stopMusic();
+  savePrefs();
+  ui.toast(v === '1' ? 'MÚSICA LIGADA' : 'MÚSICA DESLIGADA');
+});
+ui.$('#musicVol').oninput = e => {
+  audio.setMusicVolume(+e.target.value / 100);
+  savePrefs();
+};
+
+/* Análise — barra de vantagem da IA (P1) */
+ui.setSeg('#segEval', evalOn ? 1 : 0);
+ui.segBind('#segEval', v => {
+  evalOn = v === '1';
+  savePrefs();
+  refreshEvalBar();
+  ui.toast(evalOn ? 'ANÁLISE LIGADA' : 'ANÁLISE DESLIGADA');
+});
+
+/* Vibração (P0 mobile) */
+ui.setSeg('#segHaptics', hapticsOn ? 1 : 0);
+ui.segBind('#segHaptics', v => {
+  hapticsOn = v === '1';
+  setHaptics(hapticsOn);
+  savePrefs();
+  if (hapticsOn) vibrate(30);
+});
+
 ui.$('#btnStart').onclick = () => {
   if (mode === 'online') return;
   ui.nameOverride = null;
@@ -1282,9 +1369,11 @@ ui.buildSwatches(applyBoardTheme, applyPieceTheme, boardThemeIdx, pieceThemeIdx)
 /* ============ RENDER LOOP ============ */
 window.addEventListener('resize', () => {
   resize();
+  input.refit();
   if (composer) composer.setSize(window.innerWidth, window.innerHeight);
 });
 resize();
+input.resetView();
 
 /* Relógio online sincronizado (FASE 4).
    Roda em setInterval (não no rAF) para detectar timeout
@@ -1358,6 +1447,19 @@ window.__damas = {
   },
   get info() {
     return { state, turn, mode, myColor, lances: allMoves.length, captura: !!allMoves[0]?.capture };
+  },
+  input, camera, fx,
+  /* Verifica se os 4 cantos do tabuleiro estão dentro da tela (NDC) */
+  boardFits() {
+    const pts = [[-4.5, -4.5], [4.5, -4.5], [-4.5, 4.5], [4.5, 4.5]];
+    let okAll = true;
+    const v = new THREE.Vector3();
+    for (const [x, z] of pts) {
+      v.set(x, 0, z).project(camera);
+      if (Math.abs(v.x) > 1 || Math.abs(v.y) > 1) okAll = false;
+    }
+    return { fits: okAll, radius: +input.radius.toFixed(2), fit: +input.fitRadius().toFixed(2),
+             target: [+input.target.x.toFixed(2), +input.target.z.toFixed(2)] };
   }
 };
 
@@ -1413,4 +1515,20 @@ if (effectsOn) {
 
 function history2Clean() {
   try { window.history.replaceState({}, '', window.location.pathname); } catch { /* ok */ }
+}
+
+/* Música só pode tocar após um gesto do usuário (política de autoplay) */
+if (prefs.music) {
+  const startMusicOnce = () => {
+    audio.startMusic();
+    window.removeEventListener('pointerdown', startMusicOnce);
+  };
+  window.addEventListener('pointerdown', startMusicOnce, { once: true });
+}
+
+/* PWA: registra o service worker (instalável + cache do app-shell) */
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('sw.js').catch(() => { /* ok offline */ });
+  });
 }

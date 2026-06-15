@@ -533,6 +533,86 @@ body {
 
 #histToggle:hover { transform: scale(1.08); }
 
+/* ===== BOTÃO DE CÂMERA (VISÃO AÉREA) ===== */
+#camToggle {
+  position: fixed;
+  right: 18px;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 7;
+  width: 44px;
+  height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  cursor: pointer;
+  border-radius: 14px;
+  transition: transform .2s, border-color .2s, background .2s;
+}
+
+#camToggle:hover { transform: translateY(-50%) scale(1.08); }
+
+#camToggle.on {
+  border-color: var(--acc);
+  background: rgba(227, 169, 78, .18);
+}
+
+/* ===== BARRA DE VANTAGEM (LINHA DE ANÁLISE) ===== */
+#evalBar {
+  position: fixed;
+  left: 18px;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 5;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 9px;
+}
+
+#evalTxt {
+  font-size: 8px;
+  font-weight: 800;
+  letter-spacing: .08em;
+  color: var(--dim);
+  writing-mode: vertical-rl;
+  transform: rotate(180deg);
+  white-space: nowrap;
+  max-height: 110px;
+  overflow: hidden;
+}
+
+.evalTrack {
+  width: 12px;
+  height: 190px;
+  border-radius: 7px;
+  background: #23201C;
+  border: 1px solid var(--line);
+  overflow: hidden;
+  position: relative;
+  box-shadow: inset 0 2px 6px rgba(0, 0, 0, .4);
+}
+
+#evalFill {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  height: 50%;
+  background: linear-gradient(180deg, #F5EFE0, #CFC6AF);
+  transition: height .5s cubic-bezier(.4, 0, .2, 1);
+}
+
+/* ===== SLIDER DE VOLUME ===== */
+.rangeInput {
+  width: 100%;
+  margin-top: 10px;
+  height: 4px;
+  accent-color: var(--acc);
+  cursor: pointer;
+}
+
 #history {
   position: fixed;
   right: 18px;
@@ -1213,6 +1293,10 @@ body {
   #presenceBar { width: calc(100vw - 24px); text-align: center; }
   .statGrid { grid-template-columns: repeat(2, 1fr); }
   #emotePalette { bottom: 64px; }
+  #camToggle { right: 12px; top: 42%; }
+  #evalBar { left: 8px; padding: 8px 6px; }
+  #evalBar .evalTrack { height: 120px; }
+  #evalTxt { max-height: 64px; }
 }
 
 /* ===== PREFERS REDUCED MOTION ===== */

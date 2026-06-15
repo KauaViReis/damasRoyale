@@ -34,3 +34,12 @@ export const sleep = ms => new Promise(r => setTimeout(r, ms));
 export const hex = c => '#' + c.toString(16).padStart(6, '0');
 
 export const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
+
+/* Vibração tátil (Web Vibration API) — degrada silenciosamente
+   onde não há suporte (iOS Safari, desktop). Respeita a preferência. */
+let _hapticsOn = true;
+export function setHaptics(on) { _hapticsOn = on; }
+export function vibrate(pattern) {
+  if (!_hapticsOn) return;
+  try { navigator.vibrate?.(pattern); } catch { /* sem suporte */ }
+}

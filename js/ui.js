@@ -327,6 +327,41 @@ export class UIManager {
       : `FAIXA DE ELO: ±${band}`;
   }
 
+  /* ============ CÂMERA / VISÃO (P0 MOBILE) ============ */
+  setCamButton(topDown) {
+    const b = this.$('#camToggle');
+    if (b) b.classList.toggle('on', topDown);
+  }
+
+  /* ============ BARRA DE VANTAGEM DA IA (LINHA DE ANÁLISE) ============
+     score > 0 favorece as CLARAS (jogador 1). Comprime via tanh para %. */
+  updateEvalBar(score, names) {
+    const bar = this.$('#evalBar');
+    if (!bar) return;
+    const pctWhite = 50 + 50 * Math.tanh(score / 600);
+    this.$('#evalFill').style.height = pctWhite.toFixed(1) + '%';
+    const adv = Math.abs(score);
+    let txt;
+    if (adv < 40) txt = 'EQUILÍBRIO';
+    else {
+      const lead = score > 0 ? names[1] : names[-1];
+      txt = `${lead} +${(adv / 100).toFixed(1)}`;
+    }
+    this.$('#evalTxt').textContent = txt;
+  }
+
+  showEvalBar(show) {
+    const bar = this.$('#evalBar');
+    if (bar) bar.style.display = show ? 'flex' : 'none';
+  }
+
+  /* ============ MÚSICA (P1) ============ */
+  setMusicUI(on, volume) {
+    this.setSeg('#segMusic', on ? 1 : 0);
+    const sl = this.$('#musicVol');
+    if (sl) sl.value = Math.round(volume * 100);
+  }
+
   /* ============ RANKING ============ */
   renderLeaderboard(list, myUid) {
     const el = this.$('#lbList');

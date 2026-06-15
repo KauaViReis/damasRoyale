@@ -1,0 +1,21 @@
+{
+  "name": "Damas Royale",
+  "short_name": "Damas Royale",
+  "description": "Damas brasileiras 3D online com rating Elo, ranking, replays e modo espectador.",
+  "lang": "pt-BR",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#0B0D12",
+  "theme_color": "#0B0D12",
+  "categories": ["games", "entertainment"],
+  "icons": [
+    {
+      "src": "icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

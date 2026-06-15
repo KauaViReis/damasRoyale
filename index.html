@@ -8,6 +8,14 @@
   <meta property="og:title" content="DAMAS ROYALE — Damas Brasileiras 3D">
   <meta property="og:description" content="Captura obrigatória, Dama voadora, Lei da Maioria, modo online com rating Elo.">
   <meta property="og:type" content="website">
+  <!-- PWA -->
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#0B0D12">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Damas Royale">
+  <link rel="apple-touch-icon" href="icon.svg">
+  <link rel="icon" type="image/svg+xml" href="icon.svg">
   <link rel="stylesheet" href="css/style.css">
   <script type="importmap">
   {
@@ -84,9 +92,16 @@
     </div>
   </div>
 
-  <!-- BOTÕES MOBILE -->
+  <!-- BOTÕES FLUTUANTES -->
   <div id="cfgToggle" class="glass">⚙</div>
   <div id="histToggle" class="glass">📋</div>
+  <div id="camToggle" class="glass" title="Alternar câmera (visão aérea)">🎥</div>
+
+  <!-- BARRA DE VANTAGEM DA IA (LINHA DE ANÁLISE) -->
+  <div id="evalBar" class="glass" style="display:none">
+    <div id="evalTxt">EQUILÍBRIO</div>
+    <div class="evalTrack"><div id="evalFill"></div></div>
+  </div>
 
   <!-- CONFIGURAÇÕES -->
   <div id="config" class="glass">
@@ -113,6 +128,28 @@
       <div class="seg" id="segFx">
         <button data-v="1">LIGADO</button>
         <button data-v="0" class="on">DESLIGADO</button>
+      </div>
+    </div>
+    <div class="cfgGroup">
+      <div class="cfgLabel">MÚSICA DE FUNDO</div>
+      <div class="seg" id="segMusic">
+        <button data-v="1">LIGADA</button>
+        <button data-v="0" class="on">DESLIGADA</button>
+      </div>
+      <input type="range" id="musicVol" class="rangeInput" min="0" max="100" value="50" aria-label="Volume da música">
+    </div>
+    <div class="cfgGroup">
+      <div class="cfgLabel">ANÁLISE (BARRA DE VANTAGEM)</div>
+      <div class="seg" id="segEval">
+        <button data-v="1">LIGADA</button>
+        <button data-v="0" class="on">DESLIGADA</button>
+      </div>
+    </div>
+    <div class="cfgGroup">
+      <div class="cfgLabel">VIBRAÇÃO (CELULAR)</div>
+      <div class="seg" id="segHaptics">
+        <button data-v="1" class="on">LIGADA</button>
+        <button data-v="0">DESLIGADA</button>
       </div>
     </div>
     <div class="cfgGroup">
@@ -182,7 +219,7 @@
   </div>
 
   <!-- DICA -->
-  <div id="hint" class="glass">CAPTURAS SÃO OBRIGATÓRIAS &nbsp;•&nbsp; ARRASTE PARA GIRAR &nbsp;•&nbsp; SCROLL / PINÇA PARA ZOOM</div>
+  <div id="hint" class="glass">ARRASTE PARA GIRAR &nbsp;•&nbsp; SCROLL / PINÇA = ZOOM &nbsp;•&nbsp; 2 DEDOS OU BOTÃO DIREITO = MOVER &nbsp;•&nbsp; 🎥 VISÃO AÉREA</div>
 
   <!-- TOAST -->
   <div id="toast"></div>
