@@ -1467,10 +1467,17 @@ document.querySelectorAll('#emotePalette button').forEach(b => {
 
 /* --- Barra de ações em partida --- */
 ui.$('#btnHint').onclick = () => {
-  if (state !== ST.human || !canUseHint()) return;
-  /* Em captura múltipla o tabuleiro lógico só é atualizado no fim da
-     sequência; pedir dica aqui apagaria a seleção e travaria o lance. */
-  if (stepIdx > 0) { ui.toast('TERMINE A CAPTURA EM ANDAMENTO', true); audio.error(); return; }
+  /* Dev assistindo ao vivo: dica para o jogador da vez (ambos os lados). */
+  const watchingAsDev = spectating && isDev();
+  if (watchingAsDev) {
+    /* Só entre lances (partida parada); durante a animação o tabuleiro muda. */
+    if (state !== ST.remote) return;
+  } else {
+    if (state !== ST.human || !canUseHint()) return;
+    /* Em captura múltipla o tabuleiro lógico só é atualizado no fim da
+       sequência; pedir dica aqui apagaria a seleção e travaria o lance. */
+    if (stepIdx > 0) { ui.toast('TERMINE A CAPTURA EM ANDAMENTO', true); audio.error(); return; }
+  }
   const m = getHint(bd, turn);
   if (!m) return;
   deselect();
