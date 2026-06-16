@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>DAMAS ROYALE — Damas Brasileiras 3D Online</title>
+  <meta name="description" content="Damas Royale: jogo de damas 3D com regras oficiais brasileiras. Jogue local, contra a máquina ou online com rating Elo, ligas, ranking, replays e modo espectador.">
+  <meta property="og:title" content="DAMAS ROYALE — Damas Brasileiras 3D">
+  <meta property="og:description" content="Captura obrigatória, Dama voadora, Lei da Maioria, modo online com rating Elo e ligas.">
+  <meta property="og:type" content="website">
+  <meta property="og:image" content="assets/og-cover.svg">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:image" content="assets/og-cover.svg">
+  <meta name="theme-color" content="#0B0D12">
+  <link rel="icon" type="image/svg+xml" href="icon.svg">
+  <link rel="apple-touch-icon" href="icon.svg">
+  <script>
+    /* Preserva links antigos de sala apontados à raiz (?room=) e replays */
+    if (location.search.includes('room=') || location.search.includes('replay=')) {
+      location.replace('index.html' + location.search);
+    }
+  </script>
+  <style>
+    :root {
+      --acc: #E3A94E; --acc-soft: #F6D27A; --good: #3DD68C;
+      --txt: #EDE9E0; --dim: rgba(237,233,224,.6);
+      --glass: rgba(13,14,20,.66); --line: rgba(255,255,255,.09);
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Sora', system-ui, sans-serif;
+      color: var(--txt);
+      background: radial-gradient(1200px 800px at 70% -10%, #2a1c10, #14110d 60%, #0b0d12);
+      min-height: 100vh; overflow-x: hidden;
+    }
+    .wrap { max-width: 1100px; margin: 0 auto; padding: 32px 20px 80px; }
+    header { display: flex; align-items: center; justify-content: space-between; }
+    .logo { font-size: 22px; font-weight: 800; letter-spacing: .04em; }
+    .logo b { color: var(--acc); }
+    .navcta {
+      padding: 10px 20px; border-radius: 12px; font-weight: 800; font-size: 13px;
+      text-decoration: none; color: #15120C;
+      background: linear-gradient(180deg, var(--acc-soft), var(--acc));
+    }
+    .hero { display: grid; grid-template-columns: 1.1fr .9fr; gap: 40px; align-items: center; margin-top: 60px; }
+    .hero h1 { font-size: 56px; line-height: 1.05; font-weight: 800; }
+    .hero h1 .g { color: var(--acc); }
+    .hero p { margin-top: 18px; font-size: 17px; color: var(--dim); line-height: 1.6; }
+    .ctas { margin-top: 30px; display: flex; gap: 14px; flex-wrap: wrap; }
+    .btn {
+      padding: 15px 28px; border-radius: 14px; font-weight: 800; font-size: 15px;
+      text-decoration: none; cursor: pointer; border: 1px solid var(--line);
+      color: var(--txt); background: rgba(255,255,255,.05);
+    }
+    .btn.prim { color: #15120C; background: linear-gradient(180deg, var(--acc-soft), var(--acc)); border: none; }
+    .cover { width: 100%; border-radius: 18px; border: 1px solid var(--line); box-shadow: 0 20px 60px rgba(0,0,0,.5); }
+    .features { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; margin-top: 80px; }
+    .card {
+      background: var(--glass); border: 1px solid var(--line); border-radius: 16px;
+      padding: 24px; backdrop-filter: blur(12px);
+    }
+    .card .ic { font-size: 30px; }
+    .card h3 { margin: 12px 0 8px; font-size: 17px; }
+    .card p { color: var(--dim); font-size: 14px; line-height: 1.55; }
+    footer { margin-top: 70px; text-align: center; color: var(--dim); font-size: 13px; }
+    @media (max-width: 760px) {
+      .hero { grid-template-columns: 1fr; }
+      .hero h1 { font-size: 40px; }
+      .features { grid-template-columns: 1fr; }
+      .cover { order: -1; }
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <div class="logo">DAMAS <b>ROYALE</b></div>
+      <a class="navcta" href="index.html">JOGAR AGORA</a>
+    </header>
+
+    <section class="hero">
+      <div>
+        <h1>Damas 3D <span class="g">online</span>, do seu jeito.</h1>
+        <p>Regras oficiais brasileiras em 3D: capture, promova damas voadoras e suba nas
+           ligas com rating Elo. Jogue local, contra a máquina ou enfrente o mundo online —
+           com salas privadas, replays, conquistas e modo espectador.</p>
+        <div class="ctas">
+          <a class="btn prim" href="index.html">▶ JOGAR AGORA</a>
+          <a class="btn" href="index.html#online">🌐 PARTIDA ONLINE</a>
+        </div>
+      </div>
+      <img class="cover" src="assets/og-cover.svg" alt="Damas Royale — tabuleiro 3D" loading="lazy">
+    </section>
+
+    <section class="features">
+      <div class="card">
+        <div class="ic">🏆</div>
+        <h3>Ligas & Rating Elo</h3>
+        <p>Suba de Ferro a Grão-Mestre com divisões I–IV. Cada vitória conta no ranking global.</p>
+      </div>
+      <div class="card">
+        <div class="ic">🤖</div>
+        <h3>IA em 3 níveis</h3>
+        <p>Motor Minimax com poda alfa-beta e busca quiescence. Treine com dicas táticas.</p>
+      </div>
+      <div class="card">
+        <div class="ic">🌐</div>
+        <h3>Online completo</h3>
+        <p>Matchmaking por Elo, salas com link, desafios a amigos, emotes e chat rápido.</p>
+      </div>
+      <div class="card">
+        <div class="ic">🎬</div>
+        <h3>Replays & Espectador</h3>
+        <p>Reveja suas partidas lance a lance e assista a jogos ao vivo de outros jogadores.</p>
+      </div>
+      <div class="card">
+        <div class="ic">🎖️</div>
+        <h3>Conquistas</h3>
+        <p>Desbloqueie medalhas: primeira dama, vitória sem perder peça, sequências e mais.</p>
+      </div>
+      <div class="card">
+        <div class="ic">📲</div>
+        <h3>Joga em qualquer tela</h3>
+        <p>Instalável como app (PWA), otimizado para celular, com temas e acessibilidade.</p>
+      </div>
+    </section>
+
+    <footer>
+      <p>Damas Royale · Damas Brasileiras 3D · <a class="navcta" style="padding:8px 16px" href="index.html">COMEÇAR</a></p>
+    </footer>
+  </div>
+</body>
+</html>

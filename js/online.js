@@ -65,12 +65,16 @@ export class OnlineManager {
         const stop = authM.onAuthStateChanged(this.auth, () => { stop(); res(); });
       });
       if (!this.auth.currentUser) await authM.signInAnonymously(this.auth);
-      
+
+      /* Quando o usuário volta de um login/vínculo Google, NÃO aplicamos o
+         apelido local — isso renomearia indevidamente um perfil já existente. */
+      let cameFromGoogle = false;
       try {
         const result = await authM.getRedirectResult(this.auth);
         if (result && result.user) {
           this.uid = result.user.uid;
-          await this._loadProfile(nick);
+          cameFromGoogle = true;
+          await this._loadProfile(null);
           await this._syncGoogleInfo(result.user);
           this.redirectResultMsg = 'CONTA GOOGLE VINCULADA ✓';
         }
@@ -80,7 +84,8 @@ export class OnlineManager {
           if (credential) {
             const res = await authM.signInWithCredential(this.auth, credential);
             this.uid = res.user.uid;
-            await this._loadProfile(nick);
+            cameFromGoogle = true;
+            await this._loadProfile(null);
             await this._syncGoogleInfo(res.user);
             this.redirectResultMsg = 'CONECTADO À SUA CONTA GOOGLE';
           }
@@ -88,9 +93,11 @@ export class OnlineManager {
           console.error('Erro no getRedirectResult:', e);
         }
       }
-      
+
       this.uid = this.auth.currentUser.uid;
-      await this._loadProfile(nick);
+      /* Carrega o perfil uma única vez; só aplica o apelido local fora do
+         fluxo Google (perfil anônimo/novo). */
+      if (!cameFromGoogle) await this._loadProfile(nick);
       this.ready = true;
       return true;
     } catch (e) {
@@ -709,14 +716,36 @@ export class OnlineManager {
   }
 
   /* ============ RANKING ============ */
+  /* Usa só o filtro de campo único (sem índice composto) e ordena/limita no
+     cliente — evita falha quando o índice composto não foi criado. */
   async leaderboard(top = 10) {
     const f = this.f;
     const snap = await f.getDocs(f.query(
       f.collection(this.db, 'players'),
-      f.where('google', '==', true),
-      f.orderBy('rating', 'desc'), f.limit(top)
+      f.where('google', '==', true), f.limit(100)
     ));
-    return snap.docs.map(d => ({ uid: d.id, ...d.data() }));
+    return snap.docs
+      .map(d => ({ uid: d.id, ...d.data() }))
+      .sort((a, b) => (b.rating || 0) - (a.rating || 0))
+      .slice(0, top);
+  }
+
+  /* ============ BUSCA DE JOGADORES ============ */
+  /* Busca por nome (case-insensitive, substring) entre os jogadores Google.
+     Sem índice composto: filtra/ordena no cliente. */
+  async searchPlayers(term, top = 20) {
+    const q = (term || '').trim().toLowerCase();
+    if (!q) return [];
+    const f = this.f;
+    const snap = await f.getDocs(f.query(
+      f.collection(this.db, 'players'),
+      f.where('google', '==', true), f.limit(200)
+    ));
+    return snap.docs
+      .map(d => ({ uid: d.id, ...d.data() }))
+      .filter(p => p.uid !== this.uid && (p.name || '').toLowerCase().includes(q))
+      .sort((a, b) => (b.rating || 0) - (a.rating || 0))
+      .slice(0, top);
   }
 
   /* ============ PERFIL PÚBLICO (FASE 1B) ============ */
