@@ -175,6 +175,11 @@ export class UIManager {
         ? 'ÁPICE'
         : `${rating} → ${lg.nextRating} (próxima divisão)`;
     }
+    /* Tinge o título e o anel do avatar com a cor da liga (consistência visual) */
+    const title = this.$('#profTitle');
+    if (title) title.style.color = lg.color;
+    const wrap = this.$('.avatarWrap');
+    if (wrap) wrap.style.boxShadow = `0 0 0 3px ${lg.color}`;
   }
 
   /* ============ PERFIL (FASE 1) ============ */
@@ -490,7 +495,7 @@ export class UIManager {
   }
 
   /* ============ RANKING ============ */
-  renderLeaderboard(list, myUid) {
+  renderLeaderboard(list, myUid, isSearch = false) {
     const el = this.$('#lbList');
     el.innerHTML = '';
     if (!list || list.length === 0) {
@@ -500,7 +505,7 @@ export class UIManager {
     list.forEach((p, i) => {
       const row = document.createElement('div');
       row.className = 'lb-row' + (p.uid === myUid ? ' me' : '');
-      const medal = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : (i + 1) + '.';
+      const medal = isSearch ? '👤' : (i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : (i + 1) + '.');
       const lg = leagueOf(p.rating);
       row.innerHTML =
         `<span class="lb-pos">${medal}</span>` +

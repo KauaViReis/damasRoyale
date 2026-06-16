@@ -287,13 +287,10 @@
         <button class="btn" id="btnLeaderboard" style="margin-bottom:0; width: 60px; padding: 11px 0;">🏆</button>
       </div>
 
-      <div class="cfgGroup">
-        <div class="cfgLabel" data-i18n="language">IDIOMA</div>
-        <div class="seg" id="mSegLang">
-          <button data-v="pt" class="on">PT</button>
-          <button data-v="en">EN</button>
-          <button data-v="es">ES</button>
-        </div>
+      <div class="langSwitch" id="mSegLang" title="Idioma / Language / Idioma">
+        <button data-v="pt" class="on">PT</button>
+        <button data-v="en">EN</button>
+        <button data-v="es">ES</button>
       </div>
 
       <div class="cfgGroup">
@@ -506,7 +503,8 @@
   <div class="overlay hide" id="lb">
     <div class="panel glass">
       <h2 class="title small">🏆 RANKING</h2>
-      <div class="sub">OS 10 MELHORES JOGADORES</div>
+      <div class="sub" id="lbSub">OS 10 MELHORES JOGADORES</div>
+      <input type="text" id="lbSearch" class="txtInput" maxlength="16" placeholder="🔍 BUSCAR JOGADOR…" autocomplete="off" style="margin-bottom:12px">
       <div id="lbList"><div class="lb-empty">CARREGANDO…</div></div>
       <button class="btn" id="btnLbClose" style="margin-top:18px">FECHAR</button>
     </div>

@@ -1605,17 +1605,46 @@ ui.$('#btnGoogleLink').onclick = async () => {
   }
 };
 
-/* --- Ranking --- */
-ui.$('#btnLeaderboard').onclick = async () => {
-  if (!(await ensureOnline())) return;
-  ui.showOverlay('lb');
+/* --- Ranking + busca de jogadores --- */
+async function loadLeaderboard() {
+  ui.$('#lbSub').textContent = 'OS 10 MELHORES JOGADORES';
   ui.$('#lbList').innerHTML = '<div class="lb-empty">CARREGANDO…</div>';
   try {
     const list = await online.leaderboard(10);
     ui.renderLeaderboard(list, online.uid);
   } catch (e) {
+    console.error(e);
     ui.$('#lbList').innerHTML = '<div class="lb-empty">ERRO AO CARREGAR</div>';
   }
+}
+
+let lbSearchTimer = null;
+async function runPlayerSearch(term) {
+  ui.$('#lbSub').textContent = 'RESULTADOS DA BUSCA';
+  ui.$('#lbList').innerHTML = '<div class="lb-empty">BUSCANDO…</div>';
+  try {
+    const list = await online.searchPlayers(term);
+    if (!list.length) { ui.$('#lbList').innerHTML = '<div class="lb-empty">NENHUM JOGADOR ENCONTRADO</div>'; return; }
+    ui.renderLeaderboard(list, online.uid, true);
+  } catch (e) {
+    console.error(e);
+    ui.$('#lbList').innerHTML = '<div class="lb-empty">ERRO NA BUSCA</div>';
+  }
+}
+
+ui.$('#btnLeaderboard').onclick = async () => {
+  if (!(await ensureOnline())) return;
+  ui.$('#lbSearch').value = '';
+  ui.showOverlay('lb');
+  loadLeaderboard();
+};
+ui.$('#lbSearch').oninput = e => {
+  const term = e.target.value.trim();
+  clearTimeout(lbSearchTimer);
+  lbSearchTimer = setTimeout(() => {
+    if (term.length < 2) loadLeaderboard();
+    else runPlayerSearch(term);
+  }, 300);
 };
 ui.$('#btnLbClose').onclick = () => ui.hideOverlay('lb');
 

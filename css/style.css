@@ -1585,3 +1585,48 @@ body {
   font-weight: 800;
   vertical-align: middle;
 }
+
+/* ===== SELETOR DE IDIOMA COMPACTO (canto do menu) ===== */
+#menu .panel { position: relative; }
+.langSwitch {
+  position: absolute;
+  top: 14px; right: 14px;
+  display: flex;
+  gap: 3px;
+  padding: 3px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, .04);
+  border: 1px solid var(--line);
+  z-index: 2;
+}
+.langSwitch button {
+  padding: 4px 7px;
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: .04em;
+  color: var(--dim);
+  background: transparent;
+  border: none;
+  border-radius: 7px;
+  cursor: pointer;
+  transition: all .18s ease;
+}
+.langSwitch button.on { color: #15120C; background: var(--acc); }
+
+/* ===== SCROLLBARS SUTIS (global) ===== */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(227, 169, 78, .35) transparent;
+}
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb {
+  background: rgba(227, 169, 78, .32);
+  border-radius: 8px;
+}
+::-webkit-scrollbar-thumb:hover { background: rgba(227, 169, 78, .55); }
+/* Evita o "pulo" de layout quando a barra aparece/some nos painéis roláveis */
+.panel, #config, #history .hist-list,
+#onlinePlayersList, #friendsList, #matchList, #lbList, #liveList {
+  scrollbar-gutter: stable;
+}
