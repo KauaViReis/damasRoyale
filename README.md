@@ -12,9 +12,13 @@
   <img src="assets/svg/anim_crown.svg" alt="Animação Coroa Flutuante" width="150" style="margin-top: 10px;"/>
 </p>
 
-Damas Royale é um jogo de damas 3D moderno com regras oficiais brasileiras. Desenvolvido em **Three.js** puro usando módulos ES nativos (sem necessidade de processos de build complexos) e integrado com o **Google Firebase** para partidas em tempo real, sistema de Elo e ranking global.
+Damas Royale é um jogo de damas 3D moderno com regras oficiais brasileiras. Desenvolvido em **Three.js** puro usando módulos ES nativos (sem necessidade de processos de build complexos) e integrado com o **Google Firebase** para partidas em tempo real, sistema de Elo, **ligas competitivas**, conquistas e ranking global.
 
-A interface conta com uma estética premium em *glassmorphism* escuro e detalhes dourados reais.
+A interface conta com uma estética premium em *glassmorphism* escuro e detalhes dourados reais, é um **PWA instalável**, funciona em **PT / EN / ES** e foi pensada para celular e desktop.
+
+<p align="center">
+  <img src="assets/og-cover.svg" alt="Damas Royale — capa" width="520" />
+</p>
 
 ---
 
@@ -48,6 +52,22 @@ A interface conta com uma estética premium em *glassmorphism* escuro e detalhes
 
 ---
 
+## 🏅 Sistema Competitivo & Social
+
+| Recurso | Descrição |
+| :--- | :--- |
+| **Ligas com divisões** | 9 ligas — **Ferro → Bronze → Prata → Ouro → Platina → Esmeralda → Diamante → Mestre → Grão-Mestre** — com subdivisões **I–IV**, derivadas do Elo. Emblema colorido e barra de progresso até a próxima divisão. |
+| **Perfil do jogador** | Avatar, liga, taxa de vitória, melhor sequência, gráfico de evolução do Elo e partidas recentes. |
+| **Perfil público & Busca** | Clique no nome de qualquer jogador (ranking/lista) para ver o perfil dele, ou **pesquise jogadores por nome**. |
+| **Amigos** | Envie e aceite pedidos de amizade (persistidos na nuvem), desafie amigos diretamente e veja quem está online. |
+| **Conquistas** | Medalhas desbloqueáveis: primeira dama, vitória sem perder peça, sequências de vitórias, subir de liga e mais. |
+| **Chat rápido & Emotes** | Frases pré-definidas e balões de emote 3D para comunicação amigável (com *cooldown* anti-spam). |
+| **Revanche** | Ao fim de uma partida online, desafie o mesmo oponente com um clique. |
+| **Replay compartilhável** | Gere um link `?replay=<id>` de qualquer partida do histórico para outras pessoas assistirem. |
+| **Imagem de resultado** | Exporte um card (placar + Elo + liga) para compartilhar via Web Share ou download. |
+
+---
+
 ## ⚡ Recursos Adicionais Premium
 
 *   **Arenas Imersivas e Clima Dinâmico**: Jogue em ambientes 3D como Taverna Medieval, Jardim Zen, Cyberpunk ou Vulcão. A neblina e as partículas de clima (chuva, poeira, folhas de cerejeira, fagulhas) reagem ao tema escolhido em tempo real.
@@ -60,6 +80,10 @@ A interface conta com uma estética premium em *glassmorphism* escuro e detalhes
 *   **Reações e Emotes Rápidos**: Comunique-se usando balões flutuantes em 3D sobre o tabuleiro.
 *   **Google Sign-In**: Login integrado para persistir estatísticas, taxa de vitória e histórico em múltiplos dispositivos.
 *   **Som Sintetizado**: Feedback de áudio sintetizado em tempo real via Web Audio API.
+*   **PWA Instalável**: Banner de instalação e funcionamento offline do app-shell via Service Worker.
+*   **Multilíngue (i18n)**: Interface em Português, Inglês e Espanhol, selecionável no menu.
+*   **Acessibilidade**: Tema de tabuleiro de **alto contraste** e peças **amarelo × azul** (seguro para daltonismo vermelho-verde), além de **modo silencioso** de 1 toque (som + música + vibração).
+*   **Landing Page**: Página de apresentação na raiz (`/`), com o jogo servido em `/play`.
 
 ---
 
@@ -91,6 +115,8 @@ Por utilizar módulos ES puros para o carregamento do Three.js e Firebase, o jog
     python -m http.server 8000
     ```
     Em seguida, acesse `http://localhost:8000`.
+
+> **Rotas em produção (Vercel):** a raiz `/` serve a **landing page** ([landing.html](landing.html)) e o jogo fica em **`/play`** (veja [vercel.json](vercel.json)). Links de sala (`?room=`) e de replay (`?replay=`) continuam funcionando — a landing os redireciona para o jogo automaticamente. Localmente (XAMPP/Python) a raiz abre o próprio jogo.
 
 ---
 
@@ -127,8 +153,11 @@ firebase deploy --only firestore:rules
 | :--- | :--- |
 | `js/rules.js` | Motor lógico puro do jogo de damas (geração e validação de lances, notação, serialização). |
 | `js/ai.js` | Inteligência Artificial baseada em algoritmo Minimax (poda alfa-beta, quiescence e dicas). |
-| `js/elo.js` | Lógica de cálculo de rating Elo e distribuição de patentes/títulos de rank. |
-| `js/online.js` | Integração Firebase: matchmaking, salas privadas, desafios, reconexão de sessão e histórico. |
+| `js/elo.js` | Lógica de cálculo de rating Elo (K dinâmico) e título derivado da liga. |
+| `js/leagues.js` | Sistema de ligas competitivas (9 ligas × divisões I–IV) a partir do Elo. |
+| `js/achievements.js` | Catálogo de conquistas e avaliação dos predicados ao fim da partida. |
+| `js/i18n.js` | Internacionalização (PT/EN/ES) dos rótulos da interface. |
+| `js/online.js` | Integração Firebase: matchmaking, salas, desafios, amigos, conquistas, perfil público, busca, reconexão e histórico. |
 | `js/main.js` | Orquestrador principal (máquina de estados, loop de turnos, inputs 3D e integrações). |
 | `js/scene.js` | Configuração da cena, renderização, iluminação e materiais em Three.js. |
 | `js/board3d.js` | Renderização e montagem do modelo 3D do tabuleiro. |
