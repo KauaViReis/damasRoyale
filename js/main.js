@@ -21,6 +21,7 @@ import { InputManager } from './input.js';
 import { OnlineManager } from './online.js';
 import { leagueOf } from './leagues.js';
 import { evaluateAchievements, getAchievement } from './achievements.js';
+import { applyI18n, LANGS } from './i18n.js';
 import { isFirebaseConfigured } from './firebase-config.js';
 import { sleep, vibrate, setHaptics, tween, easeOutBack } from './utils.js';
 
@@ -45,6 +46,7 @@ function savePrefs() {
   prefs.haptics = hapticsOn;
   prefs.fogNear = fogNearMul;
   prefs.fogFar = fogFarMul;
+  prefs.lang = lang;
   try { localStorage.setItem(PREFS_KEY, JSON.stringify(prefs)); } catch { /* ok */ }
 }
 
@@ -123,6 +125,7 @@ let spectating = false;
 let applyingRemote = false;
 let remoteQueue = [];
 let nick = prefs.nick || 'JOGADOR';
+let lang = LANGS.includes(prefs.lang) ? prefs.lang : 'pt';
 let lastRoomCode = null;
 let lastEmoteSent = 0;
 let lastChatSent = 0;
@@ -1342,6 +1345,15 @@ ui.segBind('#segHaptics', v => {
   if (hapticsOn) vibrate(30);
 });
 
+/* Idioma (i18n PT/EN/ES) */
+applyI18n(lang);
+ui.setSeg('#mSegLang', lang);
+ui.segBind('#mSegLang', v => {
+  lang = v;
+  applyI18n(lang);
+  savePrefs();
+});
+
 /* Névoa da cena */
 {
   const fogNearEl = ui.$('#fogNear');
@@ -1533,7 +1545,7 @@ async function openProfile(profile, isSelf) {
     matchList.innerHTML = '<div class="lb-empty">CARREGANDO…</div>';
     try {
       const list = await online.myMatches(10);
-      ui.renderMatchList(list, online.uid, m => enterReplay(m));
+      ui.renderMatchList(list, online.uid, m => enterReplay(m), m => shareReplay(m));
     } catch (e) {
       console.error(e);
       matchList.innerHTML = '<div class="lb-empty">ERRO AO CARREGAR</div>';
@@ -1550,6 +1562,16 @@ async function openPublicProfile(uid) {
   const prof = await online.fetchProfile(uid);
   if (prof) openProfile(prof, false);
   else ui.toast('PERFIL NÃO ENCONTRADO', true);
+}
+
+/* Copia (ou compartilha) o link público de replay de uma partida */
+async function shareReplay(m) {
+  const url = window.location.origin + window.location.pathname + '?replay=' + m.id;
+  try {
+    if (navigator.share) { await navigator.share({ title: 'Replay — Damas Royale', url }); return; }
+    await navigator.clipboard.writeText(url);
+    ui.toast('LINK DO REPLAY COPIADO');
+  } catch { ui.toast(url); }
 }
 
 async function addFriend(player) {
@@ -1969,7 +1991,20 @@ if (effectsOn) {
 /* Auto-join por link (?room=CODIGO) e recuperação de sessão */
 (async () => {
   if (!isFirebaseConfigured) return;
-  const roomParam = new URLSearchParams(location.search).get('room');
+  const params = new URLSearchParams(location.search);
+  const replayParam = params.get('replay');
+  if (replayParam) {
+    history2Clean();
+    if (await ensureOnline()) {
+      try {
+        const m = await online.fetchMatch(replayParam);
+        if (m) enterReplay(m);
+        else ui.toast('REPLAY NÃO ENCONTRADO', true);
+      } catch (e) { console.error(e); ui.toast('ERRO AO CARREGAR REPLAY', true); }
+    }
+    return;
+  }
+  const roomParam = params.get('room');
   if (roomParam) {
     history2Clean();
     ui.setSeg('#mSegMode', 'online');
@@ -2003,6 +2038,30 @@ if (effectsOn) {
 function history2Clean() {
   try { window.history.replaceState({}, '', window.location.pathname); } catch { /* ok */ }
 }
+
+/* ============ PROMPT DE INSTALAÇÃO (PWA) ============ */
+let deferredInstallPrompt = null;
+window.addEventListener('beforeinstallprompt', e => {
+  e.preventDefault();
+  deferredInstallPrompt = e;
+  if (localStorage.getItem('damasRoyale.installDismissed') === 'true') return;
+  ui.$('#installBanner').style.display = 'flex';
+});
+ui.$('#btnInstall').onclick = async () => {
+  ui.$('#installBanner').style.display = 'none';
+  if (!deferredInstallPrompt) return;
+  deferredInstallPrompt.prompt();
+  try { await deferredInstallPrompt.userChoice; } catch { /* ok */ }
+  deferredInstallPrompt = null;
+};
+ui.$('#btnInstallDismiss').onclick = () => {
+  ui.$('#installBanner').style.display = 'none';
+  localStorage.setItem('damasRoyale.installDismissed', 'true');
+};
+window.addEventListener('appinstalled', () => {
+  ui.$('#installBanner').style.display = 'none';
+  deferredInstallPrompt = null;
+});
 
 /* Música só pode tocar após um gesto do usuário (política de autoplay) */
 if (prefs.music) {

@@ -4,18 +4,22 @@
    Trocar CACHE ao publicar nova versão invalida o cache antigo.
    ============================================================ */
 
-const CACHE = 'damas-royale-v2';
+const CACHE = 'damas-royale-v3';
 const SHELL = [
   './',
   './index.html',
+  './landing.html',
   './manifest.json',
   './icon.svg',
+  './assets/og-cover.svg',
   './css/style.css',
   './js/main.js',
   './js/rules.js',
   './js/ai.js',
   './js/elo.js',
   './js/leagues.js',
+  './js/achievements.js',
+  './js/i18n.js',
   './js/online.js',
   './js/firebase-config.js',
   './js/scene.js',

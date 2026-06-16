@@ -241,7 +241,7 @@ export class UIManager {
   }
 
   /* Lista de partidas recentes (FASE 6) */
-  renderMatchList(list, myUid, onReplay) {
+  renderMatchList(list, myUid, onReplay, onShare) {
     const el = this.$('#matchList');
     el.innerHTML = '';
     if (!list || list.length === 0) {
@@ -266,6 +266,14 @@ export class UIManager {
       btn.textContent = '▶ REPLAY';
       btn.onclick = () => onReplay(m);
       row.appendChild(btn);
+      if (onShare) {
+        const sh = document.createElement('button');
+        sh.className = 'mh-replay ghost';
+        sh.textContent = '🔗';
+        sh.title = 'Copiar link do replay';
+        sh.onclick = () => onShare(m);
+        row.appendChild(sh);
+      }
       el.appendChild(row);
     }
   }
