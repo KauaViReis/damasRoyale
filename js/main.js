@@ -1529,8 +1529,9 @@ async function openProfile(profile, isSelf) {
   if (!profile) return;
   ui.renderProfile(profile);
   ui.showOverlay('profilePanel');
-  /* Controles só do próprio perfil */
+  /* Controles só do próprio perfil: vincular Google (se ainda não) ou selo de vinculado */
   ui.$('#btnGoogleLink').style.display = (isSelf && !profile.google) ? 'block' : 'none';
+  ui.$('#googleLinkedTag').style.display = (isSelf && profile.google) ? 'block' : 'none';
   const matchLabel = ui.$('#matchListLabel');
   const matchList = ui.$('#matchList');
 
