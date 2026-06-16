@@ -214,6 +214,16 @@
     <button data-e="🔥" title="Em chamas!">🔥</button>
     <button data-e="🤝" title="Boa sorte!">🤝</button>
     <button data-e="😢" title="Bom jogo…">😢</button>
+    <div class="chatRow">
+      <button class="chatBtn" data-chat="Bom jogo!">BOM JOGO!</button>
+      <button class="chatBtn" data-chat="Boa sorte!">BOA SORTE!</button>
+      <button class="chatBtn" data-chat="Belo lance!">BELO LANCE!</button>
+      <button class="chatBtn" data-chat="Ops!">OPS!</button>
+      <button class="chatBtn" data-chat="Quase!">QUASE!</button>
+      <button class="chatBtn" data-chat="Obrigado!">OBRIGADO!</button>
+      <button class="chatBtn" data-chat="Revanche?">REVANCHE?</button>
+      <button class="chatBtn" data-chat="Bem jogado!">BEM JOGADO!</button>
+    </div>
   </div>
 
   <!-- CONTROLES DE REPLAY -->
@@ -306,6 +316,7 @@
         <div id="onlineActions">
           <button class="btn prim" id="btnQuick">⚡ PARTIDA RÁPIDA</button>
           <button class="btn" id="btnShowPlayers">👥 JOGADORES ONLINE & DESAFIOS</button>
+          <button class="btn" id="btnShowFriends">🫂 AMIGOS <span id="friendReqBadge" class="reqBadge" style="display:none">0</span></button>
           <div class="row2">
             <button class="btn" id="btnCreateRoom">CRIAR SALA</button>
             <div class="joinRow">
@@ -391,7 +402,10 @@
       <div class="cfgLabel" style="margin-top:18px">EVOLUÇÃO DO RATING</div>
       <div id="sparkBox"><svg id="sparkline" viewBox="0 0 320 70" preserveAspectRatio="none"></svg></div>
 
-      <div class="cfgLabel" style="margin-top:18px">PARTIDAS RECENTES</div>
+      <div class="cfgLabel" style="margin-top:18px">CONQUISTAS</div>
+      <div id="achGrid" class="achGrid"></div>
+
+      <div class="cfgLabel" style="margin-top:18px" id="matchListLabel">PARTIDAS RECENTES</div>
       <div id="matchList"><div class="lb-empty">CARREGANDO…</div></div>
 
       <button class="btn" id="btnProfClose" style="margin-top:16px">FECHAR</button>
@@ -420,6 +434,22 @@
       <div class="row2" style="margin-top:16px">
         <button class="btn" id="btnPlayersRefresh">ATUALIZAR</button>
         <button class="btn" id="btnPlayersClose">FECHAR</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- AMIGOS -->
+  <div class="overlay hide" id="friendsPanel">
+    <div class="panel glass">
+      <h2 class="title small">🫂 AMIGOS</h2>
+      <div class="sub">PEDIDOS E LISTA DE AMIGOS</div>
+      <div class="cfgLabel" id="friendReqLabel" style="margin-top:14px; display:none">PEDIDOS RECEBIDOS</div>
+      <div id="friendReqList"></div>
+      <div class="cfgLabel" style="margin-top:14px">MEUS AMIGOS</div>
+      <div id="friendsList"><div class="lb-empty">CARREGANDO…</div></div>
+      <div class="row2" style="margin-top:16px">
+        <button class="btn" id="btnFriendsRefresh">ATUALIZAR</button>
+        <button class="btn" id="btnFriendsClose">FECHAR</button>
       </div>
     </div>
   </div>
@@ -467,6 +497,7 @@
       <div id="overSub">PARTIDA ENCERRADA</div>
       <div id="overDelta" style="display:none"></div>
       <button class="btn prim" id="btnRematch">JOGAR NOVAMENTE</button>
+      <button class="btn" id="btnShareResult">📸 COMPARTILHAR RESULTADO</button>
       <button class="btn" id="btnMenu">VOLTAR AO MENU</button>
     </div>
   </div>

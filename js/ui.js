@@ -6,6 +6,7 @@ import { hex } from './utils.js';
 import { BOARD_THEMES, PIECE_THEMES } from './themes.js';
 import { ratingTitle } from './elo.js';
 import { leagueOf } from './leagues.js';
+import { ACHIEVEMENTS } from './achievements.js';
 
 export class UIManager {
   constructor() {
@@ -225,6 +226,20 @@ export class UIManager {
          fill="#F6D27A" stroke="#15120C" stroke-width="1"/>`;
   }
 
+  /* Grade de conquistas: mostra todo o catálogo, esmaecendo as bloqueadas */
+  renderAchievements(unlocked) {
+    const el = this.$('#achGrid');
+    if (!el) return;
+    const have = new Set((unlocked || []).map(a => a.id));
+    el.innerHTML = ACHIEVEMENTS.map(a => {
+      const got = have.has(a.id);
+      return `<div class="achCard${got ? '' : ' locked'}" title="${this._esc(a.desc)}">
+        <span class="achIcon">${got ? a.icon : '🔒'}</span>
+        <span class="achName">${this._esc(a.name)}</span>
+      </div>`;
+    }).join('');
+  }
+
   /* Lista de partidas recentes (FASE 6) */
   renderMatchList(list, myUid, onReplay) {
     const el = this.$('#matchList');
@@ -280,7 +295,7 @@ export class UIManager {
   }
 
   /* Lista de jogadores online ativos (Fase Desafios) */
-  renderOnlinePlayers(list, myUid, onChallenge) {
+  renderOnlinePlayers(list, myUid, onChallenge, onAddFriend, onOpen) {
     const el = this.$('#onlinePlayersList');
     el.innerHTML = '';
     if (!list || list.length === 0) {
@@ -290,11 +305,21 @@ export class UIManager {
     for (const p of list) {
       const row = document.createElement('div');
       row.className = 'player-row';
-      row.innerHTML =
-        `<span class="player-status-dot"></span>` +
-        `<div class="player-info">${this._esc(p.name)}` +
-        `<small>${p.rating} ELO · ${p.wins}V - ${p.losses}D</small></div>`;
-      
+      const info = document.createElement('div');
+      info.className = 'player-info clickable';
+      info.innerHTML = `${this._esc(p.name)}<small>${p.rating} ELO · ${p.wins}V - ${p.losses}D</small>`;
+      if (onOpen) info.onclick = () => onOpen(p);
+      row.innerHTML = `<span class="player-status-dot"></span>`;
+      row.appendChild(info);
+
+      if (onAddFriend) {
+        const fbtn = document.createElement('button');
+        fbtn.className = 'player-btn ghost';
+        fbtn.textContent = '➕';
+        fbtn.title = 'Adicionar amigo';
+        fbtn.onclick = () => onAddFriend(p);
+        row.appendChild(fbtn);
+      }
       const btn = document.createElement('button');
       btn.className = 'player-btn';
       btn.textContent = '⚔️ DESAFIAR';
@@ -302,6 +327,74 @@ export class UIManager {
       row.appendChild(btn);
       el.appendChild(row);
     }
+  }
+
+  /* ============ AMIGOS (FASE 1C) ============ */
+  renderFriends(list, onChallenge, onRemove, onOpen) {
+    const el = this.$('#friendsList');
+    el.innerHTML = '';
+    if (!list || list.length === 0) {
+      el.innerHTML = '<div class="lb-empty">VOCÊ AINDA NÃO TEM AMIGOS</div>';
+      return;
+    }
+    for (const p of list) {
+      const row = document.createElement('div');
+      row.className = 'player-row';
+      const info = document.createElement('div');
+      info.className = 'player-info clickable';
+      info.innerHTML = this._esc(p.name || '???');
+      if (onOpen) info.onclick = () => onOpen(p);
+      row.innerHTML = `<span class="player-status-dot"></span>`;
+      row.appendChild(info);
+
+      const rem = document.createElement('button');
+      rem.className = 'player-btn ghost';
+      rem.textContent = '✕';
+      rem.title = 'Remover amigo';
+      rem.onclick = () => onRemove(p);
+      row.appendChild(rem);
+
+      const ch = document.createElement('button');
+      ch.className = 'player-btn';
+      ch.textContent = '⚔️ DESAFIAR';
+      ch.onclick = () => onChallenge(p);
+      row.appendChild(ch);
+      el.appendChild(row);
+    }
+  }
+
+  renderFriendRequests(reqs, onAccept, onDecline) {
+    const el = this.$('#friendReqList');
+    const label = this.$('#friendReqLabel');
+    el.innerHTML = '';
+    const has = reqs && reqs.length > 0;
+    if (label) label.style.display = has ? 'block' : 'none';
+    if (!has) return;
+    for (const r of reqs) {
+      const row = document.createElement('div');
+      row.className = 'player-row';
+      row.innerHTML =
+        `<span class="player-status-dot" style="background:var(--acc);box-shadow:0 0 8px var(--acc)"></span>` +
+        `<div class="player-info">${this._esc(r.from.name)}<small>${r.from.rating} ELO</small></div>`;
+      const ok = document.createElement('button');
+      ok.className = 'player-btn';
+      ok.textContent = '✓';
+      ok.onclick = () => onAccept(r);
+      row.appendChild(ok);
+      const no = document.createElement('button');
+      no.className = 'player-btn ghost';
+      no.textContent = '✕';
+      no.onclick = () => onDecline(r);
+      row.appendChild(no);
+      el.appendChild(row);
+    }
+  }
+
+  setFriendReqBadge(n) {
+    const b = this.$('#friendReqBadge');
+    if (!b) return;
+    if (n > 0) { b.textContent = n; b.style.display = 'inline-block'; }
+    else b.style.display = 'none';
   }
 
   /* ============ PRESENÇA (FASE 3) ============ */
@@ -403,7 +496,7 @@ export class UIManager {
       const lg = leagueOf(p.rating);
       row.innerHTML =
         `<span class="lb-pos">${medal}</span>` +
-        `<span class="lb-name">${this._esc(p.name || '???')}</span>` +
+        `<span class="lb-name clickable" data-uid="${this._esc(p.uid)}">${this._esc(p.name || '???')}</span>` +
         `<span class="lb-title" style="color:${lg.color}">${lg.label}</span>` +
         `<span class="lb-rating">${p.rating}</span>`;
       el.appendChild(row);

@@ -32,6 +32,8 @@ export class OnlineManager {
     this.rated = false;
     this.lastDelta = 0;
     this.lastEmoteT = 0;
+    this.lastChatT = 0;
+    this.unlockedAch = null;   /* Set de conquistas já desbloqueadas (cache) */
 
     /* Callbacks (ligados pelo main.js) */
     this.onMatchFound = null;   /* ({ myColor, opponent, code, resume, moves, data }) */
@@ -41,6 +43,7 @@ export class OnlineManager {
     this.onDrawOffer = null;    /* () */
     this.onPresence = null;     /* (segundosDesdeUltimoSinal) */
     this.onEmote = null;        /* (byColor, emote) */
+    this.onQuickChat = null;    /* (byColor, frase) */
     this.onSearchBand = null;   /* (faixaElo | null) — feedback da fila */
   }
 
@@ -165,7 +168,7 @@ export class OnlineManager {
       hbWhite: Date.now(), hbBlack: Date.now(),
       tc, clockW: tc.base, clockB: tc.base,
       turnStartedAt: this.f.serverTimestamp(),
-      emote: null,
+      emote: null, quickChat: null,
       createdAt: this.f.serverTimestamp()
     };
   }
@@ -354,6 +357,7 @@ export class OnlineManager {
       if (!this.game.started && g.status !== 'waiting') {
         this.game.started = true;
         this.lastEmoteT = g.emote?.t || 0;
+        this.lastChatT = g.quickChat?.t || 0;
         const resume = !!opts.resume;
         if (resume) this.appliedMoves = (g.moves || []).length;
         if (!this.game.spectate) this._startHeartbeat();
@@ -380,6 +384,14 @@ export class OnlineManager {
         this.lastEmoteT = g.emote.t;
         if (g.emote.by !== this.uid && this.onEmote && g.white && g.black) {
           this.onEmote(g.emote.by === g.white.uid ? 1 : -1, g.emote.e);
+        }
+      }
+
+      /* Chat rápido (frases pré-definidas) */
+      if (g.quickChat && g.quickChat.t !== this.lastChatT) {
+        this.lastChatT = g.quickChat.t;
+        if (g.quickChat.by !== this.uid && this.onQuickChat && g.white && g.black) {
+          this.onQuickChat(g.quickChat.by === g.white.uid ? 1 : -1, g.quickChat.m);
         }
       }
 
@@ -466,6 +478,14 @@ export class OnlineManager {
     if (!this.game || !this.game.data || this.game.spectate) return;
     await this.f.updateDoc(this.game.ref, {
       emote: { by: this.uid, e, t: Date.now() }
+    }).catch(() => {});
+  }
+
+  /* ============ CHAT RÁPIDO (frases pré-definidas) ============ */
+  async sendQuickChat(m) {
+    if (!this.game || !this.game.data || this.game.spectate) return;
+    await this.f.updateDoc(this.game.ref, {
+      quickChat: { by: this.uid, m, t: Date.now() }
     }).catch(() => {});
   }
 
@@ -651,15 +671,24 @@ export class OnlineManager {
     if (!this.ready) return null;
     const f = this.f;
     const gameId = this._randomId(10);
+    /* Cria a partida ATIVA: desafiante = brancas, quem aceita = pretas */
     await f.setDoc(f.doc(this.db, 'games', gameId), this._newGameDoc(
       challenge.from,
-      challenge.to
+      challenge.to,
+      'active'
     ));
     await f.updateDoc(f.doc(this.db, 'challenges', challenge.id), {
       status: 'accepted',
       gameId: gameId
     });
+    /* Quem aceita entra como pretas */
+    this._attachGame(gameId, -1);
     return gameId;
+  }
+
+  /* O desafiante (brancas) entra na partida quando o desafio é aceito */
+  joinChallengeGame(gameId) {
+    this._attachGame(gameId, 1);
   }
 
   async declineChallenge(challenge) {
@@ -688,6 +717,98 @@ export class OnlineManager {
       f.orderBy('rating', 'desc'), f.limit(top)
     ));
     return snap.docs.map(d => ({ uid: d.id, ...d.data() }));
+  }
+
+  /* ============ PERFIL PÚBLICO (FASE 1B) ============ */
+  async fetchProfile(uid) {
+    if (!this.ready) return null;
+    const f = this.f;
+    const snap = await f.getDoc(f.doc(this.db, 'players', uid));
+    return snap.exists() ? { uid, ...snap.data() } : null;
+  }
+
+  /* ============ AMIGOS (FASE 1C) ============ */
+  /* Pedido de amizade: doc em friend_requests/{meu_uid} (espelha challenges). */
+  async sendFriendRequest(target) {
+    if (!this.ready || !this.uid || target.uid === this.uid) return;
+    const f = this.f;
+    await f.setDoc(f.doc(this.db, 'friend_requests', this.uid), {
+      from: this._me(),
+      to: { uid: target.uid, name: target.name, rating: target.rating },
+      status: 'pending', createdAt: Date.now()
+    });
+  }
+
+  /* Aceitar grava o amigo nas DUAS contas (cada doc só pelo seu dono via merge). */
+  async acceptFriendRequest(req) {
+    if (!this.ready) return;
+    const f = this.f;
+    const now = Date.now();
+    await f.setDoc(f.doc(this.db, 'players', this.uid, 'friends', req.from.uid),
+      { name: req.from.name, addedAt: now });
+    await f.setDoc(f.doc(this.db, 'players', req.from.uid, 'friends', this.uid),
+      { name: this.profile.name, addedAt: now });
+    await f.deleteDoc(f.doc(this.db, 'friend_requests', req.from.uid)).catch(() => {});
+  }
+
+  async declineFriendRequest(req) {
+    if (!this.ready) return;
+    await this.f.deleteDoc(this.f.doc(this.db, 'friend_requests', req.from.uid)).catch(() => {});
+  }
+
+  async listFriends(uid = this.uid) {
+    if (!this.ready) return [];
+    const f = this.f;
+    const snap = await f.getDocs(f.collection(this.db, 'players', uid, 'friends'));
+    return snap.docs.map(d => ({ uid: d.id, ...d.data() }));
+  }
+
+  async removeFriend(friendUid) {
+    if (!this.ready) return;
+    await this.f.deleteDoc(this.f.doc(this.db, 'players', this.uid, 'friends', friendUid))
+      .catch(() => {});
+  }
+
+  listenFriendRequests(onRequest) {
+    if (!this.ready || !this.uid) return () => {};
+    const f = this.f;
+    return f.onSnapshot(f.query(
+      f.collection(this.db, 'friend_requests'),
+      f.where('to.uid', '==', this.uid),
+      f.where('status', '==', 'pending')
+    ), snap => {
+      snap.docChanges().forEach(ch => {
+        if (ch.type === 'added' || ch.type === 'modified') {
+          onRequest({ id: ch.doc.id, ...ch.doc.data() });
+        }
+      });
+    });
+  }
+
+  /* ============ CONQUISTAS (FASE 1D) ============ */
+  async listAchievements(uid = this.uid) {
+    if (!this.ready) return [];
+    const f = this.f;
+    const snap = await f.getDocs(f.collection(this.db, 'players', uid, 'achievements'));
+    return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+  }
+
+  /* Grava os ids ainda não desbloqueados; devolve só os novos (para feedback). */
+  async unlockAchievements(ids) {
+    if (!this.ready || !this.uid || !ids || ids.length === 0) return [];
+    const f = this.f;
+    if (!this.unlockedAch) {
+      const cur = await this.listAchievements();
+      this.unlockedAch = new Set(cur.map(a => a.id));
+    }
+    const fresh = ids.filter(id => !this.unlockedAch.has(id));
+    const now = Date.now();
+    for (const id of fresh) {
+      this.unlockedAch.add(id);
+      await f.setDoc(f.doc(this.db, 'players', this.uid, 'achievements', id),
+        { unlockedAt: now }).catch(() => {});
+    }
+    return fresh;
   }
 
   /* ============ UTIL ============ */
