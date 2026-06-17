@@ -21,10 +21,10 @@ import { InputManager } from './input.js';
 import { OnlineManager } from './online.js';
 import { isFirebaseConfigured } from './firebase-config.js';
 import { sleep, vibrate, setHaptics, tween, easeOutBack } from './utils.js';
+import { PREFS_KEY, ACTIVE_KEY, ST, TC_PRESETS, REASON_TXT } from './constants.js';
+import { Tutorial } from './tutorial.js';
 
 /* ============ PREFERÊNCIAS PERSISTIDAS ============ */
-const PREFS_KEY = 'damasRoyale.prefs';
-const ACTIVE_KEY = 'damasRoyale.activeGame';
 function loadPrefs() {
   try { return JSON.parse(localStorage.getItem(PREFS_KEY)) || {}; }
   catch { return {}; }
@@ -46,16 +46,7 @@ function savePrefs() {
   try { localStorage.setItem(PREFS_KEY, JSON.stringify(prefs)); } catch { /* ok */ }
 }
 
-/* Controles de tempo online (FASE 4): base + acréscimo por lance */
-const TC_PRESETS = {
-  0: { base: 0, inc: 0 },
-  3: { base: 3 * 60000, inc: 2000 },
-  5: { base: 5 * 60000, inc: 2000 },
-  10: { base: 10 * 60000, inc: 5000 }
-};
-
 /* ============ ESTADO DO JOGO ============ */
-const ST = { menu: 0, human: 1, anim: 2, ai: 3, over: 4, remote: 5, replay: 6 };
 let state = ST.menu;
 const bd = new Int8Array(64);
 let turn = 1;
@@ -216,46 +207,17 @@ function moverColorHex(pl) {
 }
 
 /* ============ FLUXO DE TURNOS ============ */
-/* ============ TUTORIAL (FASE D) ============ */
-let tutorialDone = localStorage.getItem('damasRoyale.tutorialDone') === 'true';
-let tutorialStep = 0;
-
+/* ============ TUTORIAL (FASE D) ============
+   Lógica em tutorial.js; aqui ficam só os adaptadores que injetam o estado. */
+const tutorial = new Tutorial(ui);
 function updateTutorial() {
-  if (tutorialDone) return;
-  const overlay = ui.$('#tutorialOverlay');
-  if (!overlay) return;
-  const msg = ui.$('#tutorialMsg');
-  
-  if (state !== ST.human) {
-    overlay.style.display = 'none';
-    return;
-  }
-  
-  overlay.style.display = 'block';
-  if (tutorialStep === 0) {
-    msg.innerHTML = "<b>Sua vez!</b><br>Toque em uma peça sua.";
-    if (selected) tutorialStep = 1;
-  }
-  if (tutorialStep === 1) {
-    if (!selected) {
-      tutorialStep = 0;
-      updateTutorial();
-      return;
-    }
-    const hasCap = allMoves.some(m => m.capture);
-    if (hasCap) msg.innerHTML = "<b>Captura obrigatória!</b><br>Toque no alvo vermelho para pular.";
-    else msg.innerHTML = "<b>Movimento</b><br>Toque na casa de destino amarela.";
-  }
+  tutorial.update({
+    humanTurn: state === ST.human,
+    hasSelection: !!selected,
+    hasCapture: allMoves.some(m => m.capture)
+  });
 }
-
-function finishTutorial() {
-  if (tutorialDone) return;
-  tutorialDone = true;
-  localStorage.setItem('damasRoyale.tutorialDone', 'true');
-  const overlay = ui.$('#tutorialOverlay');
-  if (overlay) overlay.style.display = 'none';
-  ui.toast('Excelente! Boa sorte na partida.');
-}
+function finishTutorial() { tutorial.finish(); }
 
 function refreshTurnUI() {
   if (state === ST.replay) {
@@ -563,15 +525,6 @@ function applySilently(mv) {
 
 /* ============ FIM DE JOGO ============ */
 let cinematicOrbit = false;
-
-const REASON_TXT = {
-  resign: 'VITÓRIA POR DESISTÊNCIA',
-  abandon: 'O OPONENTE ABANDONOU A PARTIDA',
-  timeout: 'VITÓRIA POR TEMPO ESGOTADO',
-  draw: 'EMPATE ACORDADO ENTRE OS JOGADORES',
-  repetition: 'EMPATE POR REPETIÇÃO TRIPLA DE POSIÇÃO',
-  kings20: 'EMPATE: 20 LANCES DE DAMAS SEM CAPTURA'
-};
 
 function gameOver(winner, reason = '', fromServer = false) {
   if (state === ST.over) return;
