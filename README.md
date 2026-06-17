@@ -109,28 +109,65 @@ Para habilitar as partidas online e o ranking global:
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
+
+    // Perfil público. O dono só altera o próprio doc e o rating
+    // não pode saltar mais de 64 pontos por gravação (trava spoof de ranking).
     match /players/{uid} {
       allow read: if true;
-      allow create, update: if request.auth != null && request.auth.uid == uid;
+      allow create: if request.auth != null && request.auth.uid == uid;
+      allow update: if request.auth != null && request.auth.uid == uid
+        && request.resource.data.rating is int
+        && request.resource.data.rating >= 100
+        && request.resource.data.rating <= 4000
+        && (request.resource.data.rating - resource.data.rating) <= 64
+        && (request.resource.data.rating - resource.data.rating) >= -64;
     }
+
+    // Fila de matchmaking. O update aberto é necessário porque o
+    // pareador grava o gameId na entrada do oponente.
     match /lobby/{uid} {
-      allow read, create, update, delete: if request.auth != null;
+      allow read, update: if request.auth != null;
+      allow create, delete: if request.auth != null && request.auth.uid == uid;
     }
+
+    // Partidas: criar livre; atualizar só pelos dois jogadores
+    // (terceiros não podem sabotar). 'waiting' permite o 2º jogador entrar.
     match /games/{id} {
-      allow read, create, update: if request.auth != null;
+      allow read, create: if request.auth != null;
+      allow update: if request.auth != null && (
+        request.auth.uid == resource.data.white.uid
+        || (resource.data.black != null && request.auth.uid == resource.data.black.uid)
+        || resource.data.status == 'waiting'
+      );
     }
+
     match /challenges/{id} {
       allow read, write: if request.auth != null;
     }
+
+    // Histórico só pode ser gravado por um dos participantes da partida.
     match /match_history/{id} {
       allow read: if request.auth != null;
-      allow create, update: if request.auth != null;
+      allow create, update: if request.auth != null
+        && request.auth.uid in request.resource.data.players;
     }
   }
 }
 ```
 
+> **Importante:** estas regras impedem que terceiros adulterem partidas/histórico e travam o salto de Elo, mas o cálculo do rating ainda acontece no cliente (arquitetura serverless). Para reforçar contra abuso de cota e bots, ative no console o **App Check** (reCAPTCHA) e restrinja os **domínios autorizados** em *Authentication → Settings → Authorized domains* (deixe só o domínio do Vercel e `localhost`). Em produção real, o cálculo de Elo e a gravação do histórico deveriam migrar para uma **Cloud Function** com verificação de servidor.
+
 ---
+
+## 🧪 Testes
+
+A lógica pura (regras, Elo e IA) tem testes sem dependências:
+
+```bash
+node tests/suite.mjs        # no terminal
+```
+
+Ou abra `tests/index.html` no navegador (via servidor estático) para o relatório visual. Cobre captura obrigatória + lei da maioria, captura para trás, dama voadora, promoção, serialização de lances, cálculo de Elo e sanidade da IA.
 
 ## 📂 Estrutura do Código
 

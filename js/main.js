@@ -1560,6 +1560,7 @@ setInterval(() => {
 
 const clock = new THREE.Clock();
 let prevTime = 0;
+let lastDrawT = 0;
 (function loop() {
   requestAnimationFrame(loop);
   const t = clock.getElapsedTime();
@@ -1600,6 +1601,13 @@ let prevTime = 0;
   }
 
   fx.update(t, Math.min(dt, 0.05));
+
+  /* Bateria (mobile): não redesenha em aba oculta; no menu inicial
+     limita a ~20fps (o fundo 3D mal se move). Jogo/cinematic seguem a 60fps. */
+  if (document.hidden) return;
+  if (state === ST.menu && (t - lastDrawT) < 0.05) return;
+  lastDrawT = t;
+
   if (effectsOn && composer) composer.render();
   else renderer.render(scene, camera);
 })();
