@@ -154,6 +154,33 @@ export class UIManager {
       const lg = leagueOf(profile.rating);
       btnProf.textContent = `👤 ${lg.label} · ${profile.rating} ELO`;
     }
+    this.setAuthUI(profile);
+  }
+
+  /* Atualiza o chip de conta (canto) e o botão "Entrar com Google" do menu.
+     connected = perfil com Google vinculado. */
+  setAuthUI(profile) {
+    const connected = !!(profile && profile.google);
+    const chip = this.$('#authChip');
+    if (chip) {
+      chip.classList.toggle('connected', connected);
+      const icon = this.$('#authChipIcon');
+      const av = this.$('#authChipAvatar');
+      const txt = this.$('#authChipText');
+      if (connected) {
+        if (icon) icon.style.display = 'none';
+        if (profile.photoURL) { av.src = profile.photoURL; av.style.display = 'block'; }
+        else { av.style.display = 'none'; if (icon) icon.style.display = 'block'; }
+        txt.textContent = profile.name || 'PERFIL';
+      } else {
+        if (icon) icon.style.display = 'block';
+        av.style.display = 'none';
+        txt.textContent = this._authSigninLabel || 'ENTRAR';
+      }
+    }
+    /* Botão grande do menu só aparece quando ainda não conectou ao Google */
+    const gbtn = this.$('#googleConnectBtn');
+    if (gbtn) gbtn.style.display = connected ? 'none' : 'flex';
   }
 
   /* Preenche o emblema de liga + barra de progresso de um perfil */
