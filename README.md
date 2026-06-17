@@ -145,7 +145,19 @@ firebase deploy --only firestore:rules
 > `dev: true` no documento `players/{uid}` — gravável **apenas** via Console/Admin SDK (as
 > regras impedem o cliente de defini-lo). Não é mais liberado digitando um apelido.
 
+> **Segurança:** as regras travam a adulteração de partidas/histórico por terceiros e limitam o salto de Elo, mas o cálculo do rating ainda acontece no cliente (arquitetura serverless). Para reforçar contra abuso de cota e bots, ative o **App Check** (reCAPTCHA) e restrinja os **domínios autorizados** em *Authentication → Settings → Authorized domains* (deixe só o domínio do Vercel e `localhost`). Em produção real, o cálculo de Elo e a gravação do histórico deveriam migrar para uma **Cloud Function** com verificação de servidor.
+
 ---
+
+## 🧪 Testes
+
+A lógica pura (regras, Elo e IA) tem testes sem dependências:
+
+```bash
+node tests/suite.mjs        # no terminal
+```
+
+Ou abra `tests/index.html` no navegador (via servidor estático) para o relatório visual. Cobre captura obrigatória + lei da maioria, captura para trás, dama voadora, promoção, serialização de lances, cálculo de Elo e sanidade da IA.
 
 ## 📂 Estrutura do Código
 

@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Damas Royale — Testes</title>
+  <style>
+    body { background: #0B0D12; color: #EDE9E0; font-family: 'IBM Plex Mono', ui-monospace, monospace; padding: 24px; }
+    h1 { font-size: 16px; letter-spacing: .1em; color: #E3A94E; }
+    pre { white-space: pre-wrap; line-height: 1.6; font-size: 13px; }
+    .ok { color: #3DD68C; } .bad { color: #D9544B; }
+  </style>
+</head>
+<body>
+  <h1>👑 DAMAS ROYALE — TESTES</h1>
+  <pre id="out">Rodando…</pre>
+  <script type="module">
+    import { run } from './suite.mjs';
+    const r = run();
+    const el = document.getElementById('out');
+    el.textContent = r.report;
+    el.className = r.failed ? 'bad' : 'ok';
+  </script>
+</body>
+</html>
