@@ -26,26 +26,28 @@ const db = admin.firestore();
 
 async function updateReadme() {
   try {
-    // Busca os 3 maiores ratings (apenas contas logadas com Google)
+    // Busca contas logadas com Google e ordena no cliente.
+    // (Filtro de igualdade + orderBy em outro campo exigiria índice composto;
+    //  ordenando aqui, basta o índice automático de campo único.)
     const snapshot = await db.collection('players')
       .where('google', '==', true)
-      .orderBy('rating', 'desc')
-      .limit(3)
       .get();
-      
+
+    const top = snapshot.docs
+      .map(doc => doc.data())
+      .sort((a, b) => (b.rating || 0) - (a.rating || 0))
+      .slice(0, 3);
+
     let rankingMarkdown = '| 🏆 Posição | Jogador | Elo |\n| :---: | :--- | :---: |\n';
-    
-    if (snapshot.empty) {
+
+    if (top.length === 0) {
       rankingMarkdown += '| - | *Ainda sem jogadores ranqueados* | - |\n';
     } else {
-      let rank = 1;
       const medals = ['🥇', '🥈', '🥉'];
-      snapshot.forEach(doc => {
-        const data = doc.data();
+      top.forEach((data, i) => {
         const nome = data.name || data.displayName || 'Anônimo';
         const elo = Math.round(data.rating || 1200);
-        rankingMarkdown += `| ${medals[rank-1]} ${rank}º | **${nome}** | ${elo} |\n`;
-        rank++;
+        rankingMarkdown += `| ${medals[i]} ${i + 1}º | **${nome}** | ${elo} |\n`;
       });
     }
 

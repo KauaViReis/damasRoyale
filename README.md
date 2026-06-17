@@ -28,14 +28,14 @@ A interface conta com uma estética premium em *glassmorphism* escuro e detalhes
 
 | 🏆 Posição | Jogador | Elo |
 | :---: | :--- | :---: |
-| - | *Ainda sem jogadores ranqueados* | - |
+| 🥇 1º | **KAUA3** | 1056 |
 
-*Última atualização: 15/06/2026, 11:21 (Automático)*
+*Última atualização: 17/06/2026, 08:51 (Automático)*
 
 <!-- TOP_RANKING_END -->
 
 <!-- TOTAL_MATCHES_START -->
-> 🔥 Já foram disputadas **3** partidas épicas no Damas Royale!
+> 🔥 Já foram disputadas **28** partidas épicas no Damas Royale!
 <!-- TOTAL_MATCHES_END -->
 
 ---
