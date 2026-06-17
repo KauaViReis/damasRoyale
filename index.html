@@ -8,6 +8,13 @@
   <meta property="og:title" content="DAMAS ROYALE — Damas Brasileiras 3D">
   <meta property="og:description" content="Captura obrigatória, Dama voadora, Lei da Maioria, modo online com rating Elo.">
   <meta property="og:type" content="website">
+  <meta property="og:image" content="assets/og-cover.svg">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="DAMAS ROYALE — Damas Brasileiras 3D">
+  <meta name="twitter:description" content="Jogue damas 3D online com rating Elo, ligas, replays e modo espectador.">
+  <meta name="twitter:image" content="assets/og-cover.svg">
   <!-- PWA -->
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#0B0D12">
@@ -214,6 +221,16 @@
     <button data-e="🔥" title="Em chamas!">🔥</button>
     <button data-e="🤝" title="Boa sorte!">🤝</button>
     <button data-e="😢" title="Bom jogo…">😢</button>
+    <div class="chatRow">
+      <button class="chatBtn" data-chat="Bom jogo!">BOM JOGO!</button>
+      <button class="chatBtn" data-chat="Boa sorte!">BOA SORTE!</button>
+      <button class="chatBtn" data-chat="Belo lance!">BELO LANCE!</button>
+      <button class="chatBtn" data-chat="Ops!">OPS!</button>
+      <button class="chatBtn" data-chat="Quase!">QUASE!</button>
+      <button class="chatBtn" data-chat="Obrigado!">OBRIGADO!</button>
+      <button class="chatBtn" data-chat="Revanche?">REVANCHE?</button>
+      <button class="chatBtn" data-chat="Bem jogado!">BEM JOGADO!</button>
+    </div>
   </div>
 
   <!-- CONTROLES DE REPLAY -->
@@ -246,15 +263,22 @@
   <!-- TOAST -->
   <div id="toast"></div>
 
+  <!-- BANNER DE INSTALAÇÃO (PWA) -->
+  <div id="installBanner" class="glass" style="display:none">
+    <span>📲 INSTALE O DAMAS ROYALE</span>
+    <button class="btn mini prim" id="btnInstall">INSTALAR</button>
+    <button class="btn mini" id="btnInstallDismiss">AGORA NÃO</button>
+  </div>
+
   <!-- MENU INICIAL -->
   <div class="overlay" id="menu">
     <div class="panel glass">
       <svg class="crownLogo big"><use href="#crown"/></svg>
       <h2 class="title">DAMAS <span class="gold">ROYALE</span></h2>
-      <div class="sub">REGRAS OFICIAIS BRASILEIRAS</div>
+      <div class="sub" data-i18n="subtitle">REGRAS OFICIAIS BRASILEIRAS</div>
 
       <div class="cfgGroup">
-        <div class="cfgLabel">SEU APELIDO</div>
+        <div class="cfgLabel" data-i18n="nick">SEU APELIDO</div>
         <input type="text" id="nickInput" class="txtInput" maxlength="16" placeholder="JOGADOR" autocomplete="off">
       </div>
 
@@ -263,28 +287,34 @@
         <button class="btn" id="btnLeaderboard" style="margin-bottom:0; width: 60px; padding: 11px 0;">🏆</button>
       </div>
 
+      <div class="langSwitch" id="mSegLang" title="Idioma / Language / Idioma">
+        <button data-v="pt" class="on">PT</button>
+        <button data-v="en">EN</button>
+        <button data-v="es">ES</button>
+      </div>
+
       <div class="cfgGroup">
-        <div class="cfgLabel">MODO DE JOGO</div>
+        <div class="cfgLabel" data-i18n="mode">MODO DE JOGO</div>
         <div class="seg" id="mSegMode">
-          <button data-v="pvp" class="on">LOCAL</button>
-          <button data-v="pve">MÁQUINA</button>
-          <button data-v="online">ONLINE</button>
+          <button data-v="pvp" class="on" data-i18n="mode_local">LOCAL</button>
+          <button data-v="pve" data-i18n="mode_ai">MÁQUINA</button>
+          <button data-v="online" data-i18n="mode_online">ONLINE</button>
         </div>
       </div>
 
       <div class="cfgGroup" id="mGrpDiff" style="display:none">
-        <div class="cfgLabel">DIFICULDADE DA MÁQUINA</div>
+        <div class="cfgLabel" data-i18n="difficulty">DIFICULDADE DA MÁQUINA</div>
         <div class="seg" id="mSegDiff">
-          <button data-v="2">FÁCIL</button>
-          <button data-v="4" class="on">MÉDIO</button>
-          <button data-v="6">DIFÍCIL</button>
+          <button data-v="2" data-i18n="diff_easy">FÁCIL</button>
+          <button data-v="4" class="on" data-i18n="diff_medium">MÉDIO</button>
+          <button data-v="6" data-i18n="diff_hard">DIFÍCIL</button>
         </div>
       </div>
 
       <div class="cfgGroup" id="mGrpTime">
-        <div class="cfgLabel">TEMPO (MINUTOS)</div>
+        <div class="cfgLabel" data-i18n="time">TEMPO (MINUTOS)</div>
         <div class="seg" id="mSegTime">
-          <button data-v="0" class="on">LIVRE</button>
+          <button data-v="0" class="on" data-i18n="time_free">LIVRE</button>
           <button data-v="3">3</button>
           <button data-v="5">5</button>
           <button data-v="10">10</button>
@@ -295,7 +325,7 @@
       <div id="mGrpOnline" style="display:none">
         <div id="onlineStatus" style="display:none"></div>
         <div class="cfgGroup">
-          <div class="cfgLabel">RITMO DA PARTIDA</div>
+          <div class="cfgLabel" data-i18n="pace">RITMO DA PARTIDA</div>
           <div class="seg" id="mSegTc">
             <button data-v="0" class="on">LIVRE</button>
             <button data-v="3">3+2s</button>
@@ -304,16 +334,17 @@
           </div>
         </div>
         <div id="onlineActions">
-          <button class="btn prim" id="btnQuick">⚡ PARTIDA RÁPIDA</button>
-          <button class="btn" id="btnShowPlayers">👥 JOGADORES ONLINE & DESAFIOS</button>
+          <button class="btn prim" id="btnQuick" data-i18n="quick">⚡ PARTIDA RÁPIDA</button>
+          <button class="btn" id="btnShowPlayers" data-i18n="players">👥 JOGADORES ONLINE & DESAFIOS</button>
+          <button class="btn" id="btnShowFriends"><span data-i18n="friends">🫂 AMIGOS</span> <span id="friendReqBadge" class="reqBadge" style="display:none">0</span></button>
           <div class="row2">
-            <button class="btn" id="btnCreateRoom">CRIAR SALA</button>
+            <button class="btn" id="btnCreateRoom" data-i18n="createRoom">CRIAR SALA</button>
             <div class="joinRow">
               <input type="text" id="roomCodeInput" class="txtInput code" maxlength="6" placeholder="CÓDIGO">
-              <button class="btn" id="btnJoinRoom">ENTRAR</button>
+              <button class="btn" id="btnJoinRoom" data-i18n="joinRoom">ENTRAR</button>
             </div>
           </div>
-          <button class="btn" id="btnSpectate">👁 ASSISTIR PARTIDAS AO VIVO</button>
+          <button class="btn" id="btnSpectate" data-i18n="spectate">👁 ASSISTIR PARTIDAS AO VIVO</button>
         </div>
         <div id="searchBox" style="display:none">
           <div class="searching"><span class="spin2" id="searchSpin"></span> PROCURANDO OPONENTE…</div>
@@ -329,8 +360,8 @@
         </div>
       </div>
 
-      <button class="btn" id="btnLoadout" style="margin-top:16px">🧰 PERSONALIZAR ARENA E EXÉRCITO</button>
-      <button class="btn prim" id="btnStart" style="margin-top:8px">COMEÇAR PARTIDA</button>
+      <button class="btn" id="btnLoadout" style="margin-top:16px" data-i18n="loadout">🧰 PERSONALIZAR ARENA E EXÉRCITO</button>
+      <button class="btn prim" id="btnStart" style="margin-top:8px" data-i18n="start">COMEÇAR PARTIDA</button>
     </div>
   </div>
 
@@ -372,7 +403,13 @@
           <span class="prof-elo"><b id="profRating">1000</b> ELO</span>
         </div>
       </div>
+      <div id="profLeague" class="leagueBanner">
+        <span class="leagueChip" id="profLeagueChip">PRATA IV</span>
+        <div class="leagueProg"><div class="leagueProgFill" id="profLeagueFill"></div></div>
+        <span class="leagueProgTxt" id="profLeagueTxt"></span>
+      </div>
       <button class="btn" id="btnGoogleLink">🔗 VINCULAR CONTA GOOGLE</button>
+      <div id="googleLinkedTag" class="linkedTag" style="display:none">✓ CONTA GOOGLE VINCULADA</div>
 
       <div class="statGrid">
         <div class="statCard"><b id="stGames">0</b><span>PARTIDAS</span></div>
@@ -386,7 +423,10 @@
       <div class="cfgLabel" style="margin-top:18px">EVOLUÇÃO DO RATING</div>
       <div id="sparkBox"><svg id="sparkline" viewBox="0 0 320 70" preserveAspectRatio="none"></svg></div>
 
-      <div class="cfgLabel" style="margin-top:18px">PARTIDAS RECENTES</div>
+      <div class="cfgLabel" style="margin-top:18px">CONQUISTAS</div>
+      <div id="achGrid" class="achGrid"></div>
+
+      <div class="cfgLabel" style="margin-top:18px" id="matchListLabel">PARTIDAS RECENTES</div>
       <div id="matchList"><div class="lb-empty">CARREGANDO…</div></div>
 
       <button class="btn" id="btnProfClose" style="margin-top:16px">FECHAR</button>
@@ -415,6 +455,22 @@
       <div class="row2" style="margin-top:16px">
         <button class="btn" id="btnPlayersRefresh">ATUALIZAR</button>
         <button class="btn" id="btnPlayersClose">FECHAR</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- AMIGOS -->
+  <div class="overlay hide" id="friendsPanel">
+    <div class="panel glass">
+      <h2 class="title small">🫂 AMIGOS</h2>
+      <div class="sub">PEDIDOS E LISTA DE AMIGOS</div>
+      <div class="cfgLabel" id="friendReqLabel" style="margin-top:14px; display:none">PEDIDOS RECEBIDOS</div>
+      <div id="friendReqList"></div>
+      <div class="cfgLabel" style="margin-top:14px">MEUS AMIGOS</div>
+      <div id="friendsList"><div class="lb-empty">CARREGANDO…</div></div>
+      <div class="row2" style="margin-top:16px">
+        <button class="btn" id="btnFriendsRefresh">ATUALIZAR</button>
+        <button class="btn" id="btnFriendsClose">FECHAR</button>
       </div>
     </div>
   </div>
@@ -448,7 +504,8 @@
   <div class="overlay hide" id="lb">
     <div class="panel glass">
       <h2 class="title small">🏆 RANKING</h2>
-      <div class="sub">OS 10 MELHORES JOGADORES</div>
+      <div class="sub" id="lbSub">OS 10 MELHORES JOGADORES</div>
+      <input type="text" id="lbSearch" class="txtInput" maxlength="16" placeholder="🔍 BUSCAR JOGADOR…" autocomplete="off" style="margin-bottom:12px">
       <div id="lbList"><div class="lb-empty">CARREGANDO…</div></div>
       <button class="btn" id="btnLbClose" style="margin-top:18px">FECHAR</button>
     </div>
@@ -461,8 +518,9 @@
       <div id="overTitle">CLARAS VENCEM!</div>
       <div id="overSub">PARTIDA ENCERRADA</div>
       <div id="overDelta" style="display:none"></div>
-      <button class="btn prim" id="btnRematch">JOGAR NOVAMENTE</button>
-      <button class="btn" id="btnMenu">VOLTAR AO MENU</button>
+      <button class="btn prim" id="btnRematch" data-i18n="rematch">JOGAR NOVAMENTE</button>
+      <button class="btn" id="btnShareResult" data-i18n="share">📸 COMPARTILHAR RESULTADO</button>
+      <button class="btn" id="btnMenu" data-i18n="backMenu">VOLTAR AO MENU</button>
     </div>
   </div>
 

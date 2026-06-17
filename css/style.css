@@ -930,6 +930,94 @@ body {
 
 #sparkline { display: block; width: 100%; height: 70px; }
 
+/* ===== SELO DE CONTA GOOGLE VINCULADA ===== */
+.linkedTag {
+  width: 100%;
+  padding: 11px;
+  border-radius: 11px;
+  text-align: center;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: .1em;
+  color: var(--good);
+  background: rgba(61, 214, 140, .1);
+  border: 1px solid rgba(61, 214, 140, .4);
+}
+
+/* Perfil mais largo (mais respiro para stats/conquistas) */
+#profilePanel .panel { width: min(560px, 94vw); }
+
+/* ===== CONQUISTAS ===== */
+.achGrid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  margin-top: 8px;
+}
+.achCard {
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 10px 6px;
+  background: rgba(255, 255, 255, .03);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+  text-align: center;
+}
+.achCard.locked { opacity: .38; filter: grayscale(1); }
+.achIcon { font-size: 22px; line-height: 1; }
+.achName {
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: .08em;
+  color: var(--dim);
+}
+
+/* ===== EMBLEMA DE LIGA ===== */
+.leagueBanner {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 14px 0 4px;
+}
+.leagueChip {
+  flex: 0 0 auto;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: .12em;
+  padding: 6px 12px;
+  border: 1.5px solid var(--acc);
+  border-radius: 999px;
+  color: var(--acc);
+  background: rgba(255, 255, 255, .04);
+  white-space: nowrap;
+}
+.leagueProg {
+  flex: 1;
+  height: 8px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, .08);
+  overflow: hidden;
+}
+.leagueProgFill {
+  height: 100%;
+  width: 0%;
+  background: var(--acc);
+  border-radius: 999px;
+  transition: width .4s ease;
+}
+.leagueProgTxt {
+  flex: 0 0 auto;
+  font-size: 8px;
+  letter-spacing: .08em;
+  color: var(--dim);
+  font-family: 'IBM Plex Mono', monospace;
+}
+@media (max-width: 860px) {
+  .leagueProgTxt { display: none; }
+}
+
 /* ===== HISTÓRICO DE PARTIDAS (PERFIL) ===== */
 #matchList {
   margin-top: 8px;
@@ -1059,6 +1147,49 @@ body {
   background: rgba(227, 169, 78, .15);
   border-color: var(--acc);
   transform: scale(1.12);
+}
+
+/* Frases de chat rápido (ocupam toda a largura da paleta) */
+.chatRow {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 4px;
+  margin-top: 4px;
+  padding-top: 6px;
+  border-top: 1px solid var(--line);
+}
+#emotePalette .chatBtn {
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: .06em;
+  padding: 8px 6px;
+  color: var(--txt);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+#emotePalette .chatBtn:hover { transform: scale(1.04); }
+
+/* ===== BANNER DE INSTALAÇÃO (PWA) ===== */
+#installBanner {
+  position: fixed;
+  left: 50%;
+  bottom: 16px;
+  transform: translateX(-50%);
+  z-index: 30;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 16px;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: .1em;
+  max-width: calc(100vw - 24px);
+}
+#installBanner .btn.mini { margin: 0; }
+@media (max-width: 480px) {
+  #installBanner { flex-wrap: wrap; justify-content: center; text-align: center; }
 }
 
 .emoteBubble {
@@ -1336,8 +1467,16 @@ body {
   .prow b { font-size: 13px; }
   #hint { display: none; }
   #actions { left: 12px; bottom: 12px; right: 70px; flex-wrap: wrap; }
+  /* Rótulos ocultos → ícone sozinho; garante área de toque de 44×44px
+     (mesmo padrão dos botões-toggle) para evitar alvos pequenos demais */
+  .actBtn {
+    min-width: 44px; min-height: 44px;
+    justify-content: center; padding: 9px;
+  }
   .actBtn span { display: none; }
+  .actBtn#btnClaimWin { min-width: 0; }
   .actBtn#btnClaimWin span { display: inline; }
+  #emotePalette button { min-width: 44px; min-height: 44px; }
   #drawOfferBar { bottom: 120px; width: calc(100vw - 24px); justify-content: center; flex-wrap: wrap; }
   #replayBar { width: calc(100vw - 24px); flex-wrap: wrap; justify-content: center; }
   #rpSlider { width: 100%; order: 5; }
@@ -1431,4 +1570,80 @@ body {
   color: var(--dim);
   cursor: not-allowed;
   transform: none;
+}
+
+/* Botão secundário (ex.: adicionar amigo) */
+.player-btn.ghost {
+  border-color: var(--line);
+  background: rgba(255, 255, 255, .04);
+  color: var(--txt);
+  padding: 7px 10px;
+}
+.player-btn.ghost:hover {
+  border-color: var(--good);
+  background: rgba(61, 214, 140, .15);
+  color: var(--good);
+}
+
+/* Texto clicável (abre perfil público) */
+.clickable { cursor: pointer; }
+.clickable:hover { color: var(--acc-soft); text-decoration: underline; }
+
+/* Badge de contagem de pedidos de amizade */
+.reqBadge {
+  display: inline-block;
+  min-width: 18px;
+  padding: 1px 5px;
+  margin-left: 4px;
+  border-radius: 999px;
+  background: var(--acc2);
+  color: #fff;
+  font-size: 10px;
+  font-weight: 800;
+  vertical-align: middle;
+}
+
+/* ===== SELETOR DE IDIOMA COMPACTO (canto do menu) ===== */
+#menu .panel { position: relative; }
+.langSwitch {
+  position: absolute;
+  top: 14px; right: 14px;
+  display: flex;
+  gap: 3px;
+  padding: 3px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, .04);
+  border: 1px solid var(--line);
+  z-index: 2;
+}
+.langSwitch button {
+  padding: 4px 7px;
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: .04em;
+  color: var(--dim);
+  background: transparent;
+  border: none;
+  border-radius: 7px;
+  cursor: pointer;
+  transition: all .18s ease;
+}
+.langSwitch button.on { color: #15120C; background: var(--acc); }
+
+/* ===== SCROLLBARS SUTIS (global) ===== */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(227, 169, 78, .35) transparent;
+}
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb {
+  background: rgba(227, 169, 78, .32);
+  border-radius: 8px;
+}
+::-webkit-scrollbar-thumb:hover { background: rgba(227, 169, 78, .55); }
+/* Evita o "pulo" de layout quando a barra aparece/some nos painéis roláveis */
+.panel, #config, #history .hist-list,
+#onlinePlayersList, #friendsList, #matchList, #lbList, #liveList {
+  scrollbar-gutter: stable;
 }

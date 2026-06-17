@@ -3,6 +3,8 @@
    K dinâmico: jogadores novos sobem/descem mais rápido
    ============================================================ */
 
+import { leagueLabel } from './leagues.js';
+
 export const RATING_INICIAL = 1000;
 
 /* Fator K conforme experiência do jogador */
@@ -23,12 +25,8 @@ export function eloDelta(myRating, oppRating, score, myGames = 30) {
   return Math.round(k * (score - expectedScore(myRating, oppRating)));
 }
 
-/* Título exibido conforme o rating */
+/* Título exibido conforme o rating — agora derivado das ligas (liga + divisão).
+   Mantém a assinatura usada no perfil/leaderboard. */
 export function ratingTitle(r) {
-  if (r >= 1800) return 'GRÃO-MESTRE';
-  if (r >= 1600) return 'MESTRE';
-  if (r >= 1400) return 'EXPERT';
-  if (r >= 1200) return 'VETERANO';
-  if (r >= 1050) return 'COMPETIDOR';
-  return 'INICIANTE';
+  return leagueLabel(r);
 }

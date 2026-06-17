@@ -9,6 +9,7 @@ import {
   moveToNotation, posToNotation
 } from '../js/rules.js';
 import { kFactor, expectedScore, eloDelta, ratingTitle, RATING_INICIAL } from '../js/elo.js';
+import { leagueOf, leagueLabel, BASE_RATING } from '../js/leagues.js';
 import { evaluate, bestMove, getHint } from '../js/ai.js';
 
 /* ---- micro-framework ---- */
@@ -153,13 +154,24 @@ test('eloDelta: vitória sobe, derrota desce, empate ~0 entre iguais', () => {
   ok(eloDelta(1000, 1400, 1, 30) > eloDelta(1400, 1000, 1, 30), 'zebra vale mais');
 });
 
-test('ratingTitle nos limiares', () => {
-  eq(ratingTitle(1000), 'INICIANTE');
-  eq(ratingTitle(1050), 'COMPETIDOR');
-  eq(ratingTitle(1200), 'VETERANO');
-  eq(ratingTitle(1400), 'EXPERT');
-  eq(ratingTitle(1600), 'MESTRE');
-  eq(ratingTitle(1800), 'GRÃO-MESTRE');
+test('ligas: faixa base, divisões e ápice', () => {
+  eq(leagueOf(BASE_RATING).name, 'FERRO', 'base = Ferro');
+  eq(leagueOf(BASE_RATING).division, 'IV', 'começa na IV');
+  eq(leagueOf(1000).label, 'PRATA IV', 'rating inicial');
+  // divisões sobem a cada 50 dentro da liga (1000–1199 = Prata)
+  eq(leagueOf(1050).division, 'III');
+  eq(leagueOf(1100).division, 'II');
+  eq(leagueOf(1150).division, 'I');
+  eq(leagueOf(1200).name, 'OURO', 'troca de liga a cada 200');
+  // ápice sem divisão
+  const apex = leagueOf(2200);
+  eq(apex.name, 'GRÃO-MESTRE'); eq(apex.division, null); ok(apex.isApex, 'é ápice');
+});
+
+test('ratingTitle delega para a liga e fica nos limites', () => {
+  eq(ratingTitle(1000), leagueLabel(1000), 'consistente com leagueLabel');
+  eq(leagueOf(-999).name, 'FERRO', 'clampa abaixo da base');
+  eq(leagueOf(99999).name, 'GRÃO-MESTRE', 'clampa no topo');
 });
 
 /* ============ IA ============ */

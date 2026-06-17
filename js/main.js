@@ -19,6 +19,9 @@ import { FXManager } from './fx.js';
 import { UIManager } from './ui.js';
 import { InputManager } from './input.js';
 import { OnlineManager } from './online.js';
+import { leagueOf } from './leagues.js';
+import { evaluateAchievements, getAchievement } from './achievements.js';
+import { applyI18n, LANGS } from './i18n.js';
 import { isFirebaseConfigured } from './firebase-config.js';
 import { sleep, vibrate, setHaptics, tween, easeOutBack } from './utils.js';
 import { PREFS_KEY, ACTIVE_KEY, ST, TC_PRESETS, REASON_TXT } from './constants.js';
@@ -43,6 +46,7 @@ function savePrefs() {
   prefs.haptics = hapticsOn;
   prefs.fogNear = fogNearMul;
   prefs.fogFar = fogFarMul;
+  prefs.lang = lang;
   try { localStorage.setItem(PREFS_KEY, JSON.stringify(prefs)); } catch { /* ok */ }
 }
 
@@ -52,9 +56,15 @@ const bd = new Int8Array(64);
 let turn = 1;
 let mode = 'pvp';              /* pvp | pve | online | replay */
 
+/* Acesso de desenvolvedor (dica/análise no online): controlado pelo campo
+   players/{uid}.dev, gravável só via Admin/console. As regras do Firestore
+   impedem o cliente de forjá-lo — não depende mais do apelido digitado. */
 function isDev() {
-  const n = (ui.$('#nickInput').value || '').trim().toUpperCase();
-  return n === 'KAUÃ' || n === 'KAUA';
+  return !!(online.ready && online.profile && online.profile.dev);
+}
+/* Dica disponível fora do online; no online apenas para o dev */
+function canUseHint() {
+  return mode !== 'online' || isDev();
 }
 let depth = 4;
 let allMoves = [];
@@ -91,19 +101,34 @@ let dragStartX = 0, dragStartZ = 0;
 let quietKingMoves = 0;
 let repMap = new Map();
 
+/* Anti-spam da proposta de empate: cooldown + máximo por partida */
+const DRAW_OFFER_COOLDOWN_MS = 3000;
+const DRAW_OFFER_MAX = 5;
+let lastDrawOfferT = 0;
+let drawOfferCount = 0;
+
+/* Conquistas: promovi uma dama nesta partida? (reset a cada partida) */
+let madeKingThisGame = false;
+
 /* Online */
 let myColor = 0;
 let spectating = false;
 let applyingRemote = false;
 let remoteQueue = [];
 let nick = prefs.nick || 'JOGADOR';
+let lang = LANGS.includes(prefs.lang) ? prefs.lang : 'pt';
 let lastRoomCode = null;
 let lastEmoteSent = 0;
+let lastChatSent = 0;
+let lastOpponent = null;   /* { uid, name, rating } — para revanche */
+let lastResult = null;     /* { winner, reason } — para imagem de resultado */
 let prevModeBeforeReplay = 'pvp';
 
 /* Desafios */
 let activeIncomingChallenge = null;
 let unsubIncomingChallenges = null;
+let unsubFriendRequests = null;
+let pendingFriendReqs = [];   /* pedidos de amizade recebidos */
 let unsubOutgoingChallenge = null;
 
 /* Replay (FASE 6) */
@@ -410,6 +435,7 @@ async function finalizeMove(move) {
 
   if (piece && !piece.king && last.r === (mover === 1 ? 0 : 7)) {
     piece.king = true;
+    if (mover === myColor) madeKingThisGame = true;
     addCrown(piece, geos, materials.gold, true);
     audio.crown();
     ui.toast('DAMA! 👑');
@@ -544,8 +570,10 @@ function gameOver(winner, reason = '', fromServer = false) {
   ui.updateScore(capCount, winCount, mode, pieceThemeIdx);
   audio.win();
   ui.showGameOver(winner, capCount, mode, pieceThemeIdx, REASON_TXT[reason] || '');
-  document.getElementById('btnRematch').style.display =
-    mode === 'online' ? 'none' : 'block';
+  lastResult = { winner, reason };
+  /* Revanche e compartilhar: ocultos para o espectador */
+  ui.$('#btnRematch').style.display = spectating ? 'none' : 'block';
+  ui.$('#btnShareResult').style.display = spectating ? 'none' : 'block';
 
   if (mode === 'online') {
     localStorage.removeItem(ACTIVE_KEY);
@@ -566,6 +594,9 @@ function resetMatchState(animatePieces = false) {
   repMap.clear();
   remoteQueue = [];
   timeoutClaimed = false;
+  lastDrawOfferT = 0;
+  drawOfferCount = 0;
+  madeKingThisGame = false;
   initBoard(bd);
   buildPieces(animatePieces);
   turn = 1;
@@ -582,7 +613,7 @@ function newGame() {
   ui.updateTimer(time1, time2);
   ui.updateScore(capCount, winCount, mode, pieceThemeIdx);
   ui.setActions({
-    hint: mode !== 'online' || isDev(),
+    hint: canUseHint(),
     resign: mode === 'pve' || (mode === 'online' && !spectating),
     draw: mode === 'online' && !spectating,
     emote: mode === 'online' && !spectating,
@@ -859,6 +890,9 @@ online.onMatchFound = ({ myColor: color, opponent, code, resume, moves, data }) 
   myColor = color;
   mode = 'online';
   spectating = color === 0;
+  if (!spectating && opponent && opponent.uid) {
+    lastOpponent = { uid: opponent.uid, name: opponent.name, rating: opponent.rating };
+  }
   if (spectating) {
     ui.nameOverride = {
       '1': `${data.white.name} (${data.white.rating})`,
@@ -916,7 +950,33 @@ online.onOpponentMove = serialized => {
 
 online.onGameEnd = (winner, reason) => {
   if (state !== ST.over) gameOver(winner, reason, true);
+  checkAchievements(winner);
 };
+
+/* Avalia e desbloqueia conquistas no fim de uma partida online.
+   Roda após _applyRating (online.profile e online.lastDelta já atualizados). */
+async function checkAchievements(winner) {
+  if (mode !== 'online' || spectating || !online.ready || !online.profile) return;
+  const p = online.profile;
+  const result = winner === 0 ? 'draw' : (winner === myColor ? 'win' : 'loss');
+  const prevRating = p.rating - (online.lastDelta || 0);
+  const leagueUp = leagueOf(p.rating).minRating > leagueOf(prevRating).minRating;
+  const ctx = {
+    result,
+    myCaptures: capCount[String(myColor)] || 0,
+    lostPieces: capCount[String(-myColor)] || 0,
+    madeKing: madeKingThisGame,
+    profile: p,
+    leagueUp
+  };
+  try {
+    const fresh = await online.unlockAchievements(evaluateAchievements(ctx));
+    for (const id of fresh) {
+      const a = getAchievement(id);
+      if (a) ui.toast(`${a.icon} CONQUISTA: ${a.name}`);
+    }
+  } catch (e) { console.error('Erro ao avaliar conquistas:', e); }
+}
 
 online.onRated = (delta, newRating) => {
   const txt = (delta >= 0 ? '+' : '') + delta + ' ELO  →  ' + newRating;
@@ -949,6 +1009,12 @@ online.onEmote = (byColor, e) => {
   audio.emote();
 };
 
+online.onQuickChat = (byColor, msg) => {
+  const who = ui.pName(byColor, mode, pieceThemeIdx);
+  ui.toast(`💬 ${who}: ${msg}`);
+  audio.emote();
+};
+
 online.onSearchBand = band => ui.setSearchBand(band);
 
 /* ============ PRESENÇA E DESAFIOS ============ */
@@ -974,11 +1040,70 @@ function startIncomingChallengeListener() {
   });
 }
 
+function startFriendRequestListener() {
+  if (unsubFriendRequests || !online.ready) return;
+  unsubFriendRequests = online.listenFriendRequests(req => {
+    if (!pendingFriendReqs.some(r => r.from.uid === req.from.uid)) {
+      pendingFriendReqs.push(req);
+      ui.toast(`🫂 ${req.from.name} QUER SER SEU AMIGO`);
+    }
+    ui.setFriendReqBadge(pendingFriendReqs.length);
+    if (!ui.$('#friendsPanel').classList.contains('hide')) renderFriendsPanel();
+  });
+}
+
+function renderFriendsPanel() {
+  ui.renderFriendRequests(
+    pendingFriendReqs,
+    async req => {
+      try { await online.acceptFriendRequest(req); ui.toast(`AGORA VOCÊS SÃO AMIGOS`); }
+      catch (e) { console.error(e); ui.toast('FALHA AO ACEITAR', true); }
+      pendingFriendReqs = pendingFriendReqs.filter(r => r.from.uid !== req.from.uid);
+      ui.setFriendReqBadge(pendingFriendReqs.length);
+      renderFriendsPanel();
+    },
+    async req => {
+      try { await online.declineFriendRequest(req); } catch (e) { console.error(e); }
+      pendingFriendReqs = pendingFriendReqs.filter(r => r.from.uid !== req.from.uid);
+      ui.setFriendReqBadge(pendingFriendReqs.length);
+      renderFriendsPanel();
+    }
+  );
+}
+
+async function openFriendsPanel() {
+  if (!(await ensureOnline())) return;
+  ui.showOverlay('friendsPanel');
+  renderFriendsPanel();
+  ui.$('#friendsList').innerHTML = '<div class="lb-empty">CARREGANDO…</div>';
+  try {
+    const list = await online.listFriends();
+    ui.renderFriends(
+      list,
+      p => challengePlayer({ uid: p.uid, name: p.name, rating: p.rating || 1000 }),
+      async p => {
+        if (!confirm(`Remover ${p.name} dos amigos?`)) return;
+        await online.removeFriend(p.uid);
+        openFriendsPanel();
+      },
+      p => openPublicProfile(p.uid)
+    );
+  } catch (e) {
+    console.error(e);
+    ui.$('#friendsList').innerHTML = '<div class="lb-empty">ERRO AO CARREGAR</div>';
+  }
+}
+
 async function refreshOnlinePlayersList() {
   ui.$('#onlinePlayersList').innerHTML = '<div class="lb-empty">CARREGANDO…</div>';
   try {
     const list = await online.listOnlinePlayers();
-    ui.renderOnlinePlayers(list, online.uid, p => challengePlayer(p));
+    ui.renderOnlinePlayers(
+      list, online.uid,
+      p => challengePlayer(p),
+      p => addFriend(p),
+      p => openPublicProfile(p.uid)
+    );
   } catch (e) {
     console.error(e);
     ui.$('#onlinePlayersList').innerHTML = '<div class="lb-empty">ERRO AO CARREGAR JOGADORES</div>';
@@ -1002,12 +1127,14 @@ async function challengePlayer(player) {
       async (gameId) => {
         cleanupOutgoingChallenge();
         ui.hideOverlay('challengeWaitPanel');
+        online.joinChallengeGame(gameId);       /* entra como brancas */
         await online.cancelOutgoingChallenge(); /* Limpa doc */
       },
-      () => {
+      async () => {
         cleanupOutgoingChallenge();
         ui.hideOverlay('challengeWaitPanel');
         ui.toast('DESAFIO RECUSADO PELO ADVERSÁRIO', true);
+        await online.cancelOutgoingChallenge(); /* Limpa doc após recusa */
       },
       () => {
         cleanupOutgoingChallenge();
@@ -1051,7 +1178,8 @@ function ensureOnline() {
         ui.updateRatingBadge(online.profile);
         online.updateActive();
         startIncomingChallengeListener();
-        
+        startFriendRequestListener();
+
         if (online.redirectResultMsg) {
           ui.toast(online.redirectResultMsg);
           online.redirectResultMsg = null;
@@ -1168,6 +1296,15 @@ ui.segBind('#segHaptics', v => {
   setHaptics(hapticsOn);
   savePrefs();
   if (hapticsOn) vibrate(30);
+});
+
+/* Idioma (i18n PT/EN/ES) */
+applyI18n(lang);
+ui.setSeg('#mSegLang', lang);
+ui.segBind('#mSegLang', v => {
+  lang = v;
+  applyI18n(lang);
+  savePrefs();
 });
 
 /* Névoa da cena */
@@ -1304,6 +1441,11 @@ ui.$('#btnShowPlayers').onclick = async () => {
 ui.$('#btnPlayersRefresh').onclick = refreshOnlinePlayersList;
 ui.$('#btnPlayersClose').onclick = () => ui.hideOverlay('playersPanel');
 
+/* --- Amigos --- */
+ui.$('#btnShowFriends').onclick = openFriendsPanel;
+ui.$('#btnFriendsRefresh').onclick = openFriendsPanel;
+ui.$('#btnFriendsClose').onclick = () => ui.hideOverlay('friendsPanel');
+
 ui.$('#btnCancelChallenge').onclick = async () => {
   ui.toast('DESAFIO CANCELADO');
   cleanupOutgoingChallenge();
@@ -1335,20 +1477,76 @@ ui.$('#btnDeclineChallenge').onclick = async () => {
 };
 
 /* --- Perfil (FASE 1) --- */
+/* Abre o painel de perfil (próprio ou de outro jogador). */
+async function openProfile(profile, isSelf) {
+  if (!profile) return;
+  ui.renderProfile(profile);
+  ui.showOverlay('profilePanel');
+  /* Controles só do próprio perfil: vincular Google (se ainda não) ou selo de vinculado */
+  ui.$('#btnGoogleLink').style.display = (isSelf && !profile.google) ? 'block' : 'none';
+  ui.$('#googleLinkedTag').style.display = (isSelf && profile.google) ? 'block' : 'none';
+  const matchLabel = ui.$('#matchListLabel');
+  const matchList = ui.$('#matchList');
+
+  /* Conquistas (ambos os perfis) */
+  ui.$('#achGrid').innerHTML = '';
+  online.listAchievements(profile.uid).then(a => ui.renderAchievements(a)).catch(() => {});
+
+  /* Partidas recentes: apenas o próprio (consulta é por uid logado) */
+  if (isSelf) {
+    matchLabel.style.display = '';
+    matchList.style.display = '';
+    matchList.innerHTML = '<div class="lb-empty">CARREGANDO…</div>';
+    try {
+      const list = await online.myMatches(10);
+      ui.renderMatchList(list, online.uid, m => enterReplay(m), m => shareReplay(m));
+    } catch (e) {
+      console.error(e);
+      matchList.innerHTML = '<div class="lb-empty">ERRO AO CARREGAR</div>';
+    }
+  } else {
+    matchLabel.style.display = 'none';
+    matchList.style.display = 'none';
+  }
+}
+
+async function openPublicProfile(uid) {
+  if (!(await ensureOnline())) return;
+  if (uid === online.uid) return openProfile({ uid, ...online.profile }, true);
+  const prof = await online.fetchProfile(uid);
+  if (prof) openProfile(prof, false);
+  else ui.toast('PERFIL NÃO ENCONTRADO', true);
+}
+
+/* Copia (ou compartilha) o link público de replay de uma partida */
+async function shareReplay(m) {
+  const url = window.location.origin + window.location.pathname + '?replay=' + m.id;
+  try {
+    if (navigator.share) { await navigator.share({ title: 'Replay — Damas Royale', url }); return; }
+    await navigator.clipboard.writeText(url);
+    ui.toast('LINK DO REPLAY COPIADO');
+  } catch { ui.toast(url); }
+}
+
+async function addFriend(player) {
+  if (!(await ensureOnline())) return;
+  try {
+    await online.sendFriendRequest(player);
+    ui.toast(`PEDIDO DE AMIZADE ENVIADO A ${player.name}`);
+  } catch (e) { console.error(e); ui.toast('FALHA AO ENVIAR PEDIDO', true); }
+}
+
 ui.$('#btnProfile').onclick = async () => {
   if (!(await ensureOnline())) return;
-  ui.renderProfile(online.profile);
-  ui.showOverlay('profilePanel');
-  ui.$('#matchList').innerHTML = '<div class="lb-empty">CARREGANDO…</div>';
-  try {
-    const list = await online.myMatches(10);
-    ui.renderMatchList(list, online.uid, m => enterReplay(m));
-  } catch (e) {
-    console.error(e);
-    ui.$('#matchList').innerHTML = '<div class="lb-empty">ERRO AO CARREGAR</div>';
-  }
+  openProfile({ uid: online.uid, ...online.profile }, true);
 };
 ui.$('#btnProfClose').onclick = () => ui.hideOverlay('profilePanel');
+
+/* Clique no nome do ranking abre o perfil público */
+ui.$('#lbList').addEventListener('click', e => {
+  const el = e.target.closest('.lb-name[data-uid]');
+  if (el) openPublicProfile(el.dataset.uid);
+});
 
 ui.$('#btnGoogleLink').onclick = async () => {
   if (!(await ensureOnline())) return;
@@ -1361,17 +1559,46 @@ ui.$('#btnGoogleLink').onclick = async () => {
   }
 };
 
-/* --- Ranking --- */
-ui.$('#btnLeaderboard').onclick = async () => {
-  if (!(await ensureOnline())) return;
-  ui.showOverlay('lb');
+/* --- Ranking + busca de jogadores --- */
+async function loadLeaderboard() {
+  ui.$('#lbSub').textContent = 'OS 10 MELHORES JOGADORES';
   ui.$('#lbList').innerHTML = '<div class="lb-empty">CARREGANDO…</div>';
   try {
     const list = await online.leaderboard(10);
     ui.renderLeaderboard(list, online.uid);
   } catch (e) {
+    console.error(e);
     ui.$('#lbList').innerHTML = '<div class="lb-empty">ERRO AO CARREGAR</div>';
   }
+}
+
+let lbSearchTimer = null;
+async function runPlayerSearch(term) {
+  ui.$('#lbSub').textContent = 'RESULTADOS DA BUSCA';
+  ui.$('#lbList').innerHTML = '<div class="lb-empty">BUSCANDO…</div>';
+  try {
+    const list = await online.searchPlayers(term);
+    if (!list.length) { ui.$('#lbList').innerHTML = '<div class="lb-empty">NENHUM JOGADOR ENCONTRADO</div>'; return; }
+    ui.renderLeaderboard(list, online.uid, true);
+  } catch (e) {
+    console.error(e);
+    ui.$('#lbList').innerHTML = '<div class="lb-empty">ERRO NA BUSCA</div>';
+  }
+}
+
+ui.$('#btnLeaderboard').onclick = async () => {
+  if (!(await ensureOnline())) return;
+  ui.$('#lbSearch').value = '';
+  ui.showOverlay('lb');
+  loadLeaderboard();
+};
+ui.$('#lbSearch').oninput = e => {
+  const term = e.target.value.trim();
+  clearTimeout(lbSearchTimer);
+  lbSearchTimer = setTimeout(() => {
+    if (term.length < 2) loadLeaderboard();
+    else runPlayerSearch(term);
+  }, 300);
 };
 ui.$('#btnLbClose').onclick = () => ui.hideOverlay('lb');
 
@@ -1388,7 +1615,7 @@ ui.$('#rpExit').onclick = backToMenu;
 
 /* --- Emotes (FASE 8) --- */
 ui.$('#btnEmote').onclick = () => ui.toggleEmotePalette();
-document.querySelectorAll('#emotePalette button').forEach(b => {
+document.querySelectorAll('#emotePalette button[data-e]').forEach(b => {
   b.onclick = () => {
     const now = Date.now();
     if (now - lastEmoteSent < 3000) {
@@ -1403,9 +1630,36 @@ document.querySelectorAll('#emotePalette button').forEach(b => {
   };
 });
 
+/* --- Chat rápido (frases pré-definidas) --- */
+document.querySelectorAll('#emotePalette button[data-chat]').forEach(b => {
+  b.onclick = () => {
+    const now = Date.now();
+    if (now - lastChatSent < 3000) {
+      ui.toast('AGUARDE PARA FALAR DE NOVO', true);
+      return;
+    }
+    lastChatSent = now;
+    ui.toggleEmotePalette(false);
+    const msg = b.dataset.chat;
+    online.sendQuickChat(msg);
+    ui.toast(`💬 ${ui.pName(myColor, mode, pieceThemeIdx)}: ${msg}`);
+    audio.emote();
+  };
+});
+
 /* --- Barra de ações em partida --- */
 ui.$('#btnHint').onclick = () => {
-  if (state !== ST.human || mode === 'online') return;
+  /* Dev assistindo ao vivo: dica para o jogador da vez (ambos os lados). */
+  const watchingAsDev = spectating && isDev();
+  if (watchingAsDev) {
+    /* Só entre lances (partida parada); durante a animação o tabuleiro muda. */
+    if (state !== ST.remote) return;
+  } else {
+    if (state !== ST.human || !canUseHint()) return;
+    /* Em captura múltipla o tabuleiro lógico só é atualizado no fim da
+       sequência; pedir dica aqui apagaria a seleção e travaria o lance. */
+    if (stepIdx > 0) { ui.toast('TERMINE A CAPTURA EM ANDAMENTO', true); audio.error(); return; }
+  }
   const m = getHint(bd, turn);
   if (!m) return;
   deselect();
@@ -1427,6 +1681,17 @@ ui.$('#btnResign').onclick = () => {
 
 ui.$('#btnDrawOffer').onclick = () => {
   if (mode !== 'online' || state === ST.over) return;
+  const now = Date.now();
+  if (now - lastDrawOfferT < DRAW_OFFER_COOLDOWN_MS) {
+    ui.toast('AGUARDE PARA PROPOR EMPATE NOVAMENTE', true);
+    return;
+  }
+  if (drawOfferCount >= DRAW_OFFER_MAX) {
+    ui.toast('LIMITE DE PROPOSTAS DE EMPATE ATINGIDO', true);
+    return;
+  }
+  lastDrawOfferT = now;
+  drawOfferCount++;
   online.offerDraw();
   ui.toast('EMPATE PROPOSTO');
 };
@@ -1439,8 +1704,21 @@ ui.$('#btnClaimWin').onclick = () => {
 };
 
 ui.$('#btnSound').onclick = () => {
-  const muted = audio.toggleMute();
-  ui.setSoundIcon(muted);
+  /* Modo silencioso de 1 toque: alterna som + música + vibração juntos. */
+  const goSilent = !audio.muted;
+  audio.muted = goSilent;
+  ui.setSoundIcon(audio.muted);
+  if (goSilent) {
+    if (audio.musicOn) audio.stopMusic();
+    hapticsOn = false;
+  } else {
+    if (prefs.music) audio.startMusic();
+    hapticsOn = true;
+  }
+  setHaptics(hapticsOn);
+  ui.setMusicUI(audio.musicOn, audio.musicVolume);
+  ui.setSeg('#segHaptics', hapticsOn ? 1 : 0);
+  ui.toast(goSilent ? '🔇 MODO SILENCIOSO' : '🔊 SOM ATIVADO');
   savePrefs();
 };
 
@@ -1459,8 +1737,98 @@ ui.$('#btnResetScore').onclick = () => {
 };
 
 ui.$('#btnBackMenu').onclick = backToMenu;
-ui.$('#btnRematch').onclick = () => { if (mode !== 'online') newGame(); };
+ui.$('#btnRematch').onclick = async () => {
+  if (mode !== 'online') { newGame(); return; }
+  /* Revanche online: desafia o mesmo oponente (reusa o fluxo de desafio). */
+  if (!lastOpponent) { ui.toast('OPONENTE INDISPONÍVEL PARA REVANCHE', true); return; }
+  const opp = lastOpponent;
+  await online.leaveGame();
+  localStorage.removeItem(ACTIVE_KEY);
+  ui.hideOverlay('over');
+  ui.nameOverride = null;
+  ui.setActions({ hint: false, resign: false, draw: false, claim: false, emote: false, leaveWatch: false });
+  state = ST.menu;
+  challengePlayer(opp);
+};
 ui.$('#btnMenu').onclick = backToMenu;
+
+/* Gera uma imagem (PNG) do resultado para compartilhar / baixar */
+function buildResultCanvas() {
+  const winner = lastResult ? lastResult.winner : 0;
+  const cv = document.createElement('canvas');
+  cv.width = 1200; cv.height = 630;
+  const g = cv.getContext('2d');
+  /* Fundo */
+  const grad = g.createLinearGradient(0, 0, 1200, 630);
+  grad.addColorStop(0, '#14110D'); grad.addColorStop(1, '#241a10');
+  g.fillStyle = grad; g.fillRect(0, 0, 1200, 630);
+  g.fillStyle = '#E3A94E';
+  g.font = '700 34px Sora, sans-serif';
+  g.textAlign = 'center';
+  g.fillText('DAMAS ROYALE', 600, 90);
+  /* Título */
+  const title = winner === 0 ? 'EMPATE' : `${ui.pName(winner, mode, pieceThemeIdx)} VENCEU`;
+  g.fillStyle = '#EDE9E0';
+  g.font = '800 76px Sora, sans-serif';
+  g.fillText(title, 600, 250);
+  /* Placar de capturas */
+  g.fillStyle = 'rgba(237,233,224,.7)';
+  g.font = '500 32px "IBM Plex Mono", monospace';
+  g.fillText(`CAPTURAS  ${capCount['1']}  ×  ${capCount['-1']}`, 600, 330);
+  /* Linha de Elo/liga (apenas online, não-espectador) */
+  if (mode === 'online' && !spectating && online.profile) {
+    const r = online.profile.rating;
+    const lg = leagueOf(r);
+    const d = online.lastDelta || 0;
+    g.fillStyle = d >= 0 ? '#3DD68C' : '#D9544B';
+    g.font = '700 40px Sora, sans-serif';
+    g.fillText(`${(d >= 0 ? '+' : '') + d} ELO  →  ${r}`, 600, 430);
+    g.fillStyle = lg.color;
+    g.font = '800 36px Sora, sans-serif';
+    g.fillText(lg.label, 600, 500);
+  }
+  g.fillStyle = 'rgba(237,233,224,.4)';
+  g.font = '500 24px "IBM Plex Mono", monospace';
+  g.fillText('damas-royale', 600, 590);
+  return cv;
+}
+
+ui.$('#btnShareResult').onclick = () => {
+  let cv;
+  try { cv = buildResultCanvas(); } catch (e) { console.error(e); return; }
+  cv.toBlob(async blob => {
+    if (!blob) return;
+    const file = new File([blob], 'damas-royale.png', { type: 'image/png' });
+    /* Web Share API com arquivo, quando suportado */
+    if (navigator.canShare && navigator.canShare({ files: [file] })) {
+      try {
+        await navigator.share({ files: [file], title: 'Damas Royale' });
+        return;
+      } catch { /* usuário cancelou — cai para download */ }
+    }
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = 'damas-royale.png';
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+    ui.toast('IMAGEM SALVA');
+  }, 'image/png');
+};
+
+/* Ao voltar do segundo plano, reforça o destaque do último lance (PWA/mobile) */
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState !== 'visible') return;
+  if (mode !== 'online' || !online.game || !online.game.data) return;
+  const moves = online.game.data.moves || [];
+  if (!moves.length) return;
+  try {
+    const mv = deserializeMove(JSON.parse(moves[moves.length - 1]).m);
+    const last = mv.steps[mv.steps.length - 1];
+    fx.setLastMove(mv.from, [last.r, last.c]);
+    if (state === ST.human) ui.toast('É A SUA VEZ');
+  } catch { /* ignora */ }
+});
+
 ui.$('#cfgToggle').onclick = () => ui.$('#config').classList.toggle('open');
 ui.$('#undoBtn').onclick = () => { undo(); ui.toast('JOGADA DESFEITA'); };
 
@@ -1614,7 +1982,20 @@ if (effectsOn) {
 /* Auto-join por link (?room=CODIGO) e recuperação de sessão */
 (async () => {
   if (!isFirebaseConfigured) return;
-  const roomParam = new URLSearchParams(location.search).get('room');
+  const params = new URLSearchParams(location.search);
+  const replayParam = params.get('replay');
+  if (replayParam) {
+    history2Clean();
+    if (await ensureOnline()) {
+      try {
+        const m = await online.fetchMatch(replayParam);
+        if (m) enterReplay(m);
+        else ui.toast('REPLAY NÃO ENCONTRADO', true);
+      } catch (e) { console.error(e); ui.toast('ERRO AO CARREGAR REPLAY', true); }
+    }
+    return;
+  }
+  const roomParam = params.get('room');
   if (roomParam) {
     history2Clean();
     ui.setSeg('#mSegMode', 'online');
@@ -1648,6 +2029,30 @@ if (effectsOn) {
 function history2Clean() {
   try { window.history.replaceState({}, '', window.location.pathname); } catch { /* ok */ }
 }
+
+/* ============ PROMPT DE INSTALAÇÃO (PWA) ============ */
+let deferredInstallPrompt = null;
+window.addEventListener('beforeinstallprompt', e => {
+  e.preventDefault();
+  deferredInstallPrompt = e;
+  if (localStorage.getItem('damasRoyale.installDismissed') === 'true') return;
+  ui.$('#installBanner').style.display = 'flex';
+});
+ui.$('#btnInstall').onclick = async () => {
+  ui.$('#installBanner').style.display = 'none';
+  if (!deferredInstallPrompt) return;
+  deferredInstallPrompt.prompt();
+  try { await deferredInstallPrompt.userChoice; } catch { /* ok */ }
+  deferredInstallPrompt = null;
+};
+ui.$('#btnInstallDismiss').onclick = () => {
+  ui.$('#installBanner').style.display = 'none';
+  localStorage.setItem('damasRoyale.installDismissed', 'true');
+};
+window.addEventListener('appinstalled', () => {
+  ui.$('#installBanner').style.display = 'none';
+  deferredInstallPrompt = null;
+});
 
 /* Música só pode tocar após um gesto do usuário (política de autoplay) */
 if (prefs.music) {

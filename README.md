@@ -12,9 +12,13 @@
   <img src="assets/svg/anim_crown.svg" alt="Animação Coroa Flutuante" width="150" style="margin-top: 10px;"/>
 </p>
 
-Damas Royale é um jogo de damas 3D moderno com regras oficiais brasileiras. Desenvolvido em **Three.js** puro usando módulos ES nativos (sem necessidade de processos de build complexos) e integrado com o **Google Firebase** para partidas em tempo real, sistema de Elo e ranking global.
+Damas Royale é um jogo de damas 3D moderno com regras oficiais brasileiras. Desenvolvido em **Three.js** puro usando módulos ES nativos (sem necessidade de processos de build complexos) e integrado com o **Google Firebase** para partidas em tempo real, sistema de Elo, **ligas competitivas**, conquistas e ranking global.
 
-A interface conta com uma estética premium em *glassmorphism* escuro e detalhes dourados reais.
+A interface conta com uma estética premium em *glassmorphism* escuro e detalhes dourados reais, é um **PWA instalável**, funciona em **PT / EN / ES** e foi pensada para celular e desktop.
+
+<p align="center">
+  <img src="assets/og-cover.svg" alt="Damas Royale — capa" width="520" />
+</p>
 
 ---
 
@@ -48,6 +52,22 @@ A interface conta com uma estética premium em *glassmorphism* escuro e detalhes
 
 ---
 
+## 🏅 Sistema Competitivo & Social
+
+| Recurso | Descrição |
+| :--- | :--- |
+| **Ligas com divisões** | 9 ligas — **Ferro → Bronze → Prata → Ouro → Platina → Esmeralda → Diamante → Mestre → Grão-Mestre** — com subdivisões **I–IV**, derivadas do Elo. Emblema colorido e barra de progresso até a próxima divisão. |
+| **Perfil do jogador** | Avatar, liga, taxa de vitória, melhor sequência, gráfico de evolução do Elo e partidas recentes. |
+| **Perfil público & Busca** | Clique no nome de qualquer jogador (ranking/lista) para ver o perfil dele, ou **pesquise jogadores por nome**. |
+| **Amigos** | Envie e aceite pedidos de amizade (persistidos na nuvem), desafie amigos diretamente e veja quem está online. |
+| **Conquistas** | Medalhas desbloqueáveis: primeira dama, vitória sem perder peça, sequências de vitórias, subir de liga e mais. |
+| **Chat rápido & Emotes** | Frases pré-definidas e balões de emote 3D para comunicação amigável (com *cooldown* anti-spam). |
+| **Revanche** | Ao fim de uma partida online, desafie o mesmo oponente com um clique. |
+| **Replay compartilhável** | Gere um link `?replay=<id>` de qualquer partida do histórico para outras pessoas assistirem. |
+| **Imagem de resultado** | Exporte um card (placar + Elo + liga) para compartilhar via Web Share ou download. |
+
+---
+
 ## ⚡ Recursos Adicionais Premium
 
 *   **Arenas Imersivas e Clima Dinâmico**: Jogue em ambientes 3D como Taverna Medieval, Jardim Zen, Cyberpunk ou Vulcão. A neblina e as partículas de clima (chuva, poeira, folhas de cerejeira, fagulhas) reagem ao tema escolhido em tempo real.
@@ -60,6 +80,10 @@ A interface conta com uma estética premium em *glassmorphism* escuro e detalhes
 *   **Reações e Emotes Rápidos**: Comunique-se usando balões flutuantes em 3D sobre o tabuleiro.
 *   **Google Sign-In**: Login integrado para persistir estatísticas, taxa de vitória e histórico em múltiplos dispositivos.
 *   **Som Sintetizado**: Feedback de áudio sintetizado em tempo real via Web Audio API.
+*   **PWA Instalável**: Banner de instalação e funcionamento offline do app-shell via Service Worker.
+*   **Multilíngue (i18n)**: Interface em Português, Inglês e Espanhol, selecionável no menu.
+*   **Acessibilidade**: Tema de tabuleiro de **alto contraste** e peças **amarelo × azul** (seguro para daltonismo vermelho-verde), além de **modo silencioso** de 1 toque (som + música + vibração).
+*   **Landing Page**: Página de apresentação na raiz (`/`), com o jogo servido em `/play`.
 
 ---
 
@@ -92,6 +116,8 @@ Por utilizar módulos ES puros para o carregamento do Three.js e Firebase, o jog
     ```
     Em seguida, acesse `http://localhost:8000`.
 
+> **Rotas em produção (Vercel):** a raiz `/` serve a **landing page** ([landing.html](landing.html)) e o jogo fica em **`/play`** (veja [vercel.json](vercel.json)). Links de sala (`?room=`) e de replay (`?replay=`) continuam funcionando — a landing os redireciona para o jogo automaticamente. Localmente (XAMPP/Python) a raiz abre o próprio jogo.
+
 ---
 
 ## ☁️ Ativando o Modo Online (Configuração do Firebase)
@@ -103,59 +129,23 @@ Para habilitar as partidas online e o ranking global:
 3. Cole as chaves em [js/firebase-config.js](js/firebase-config.js).
 4. No menu lateral do Firebase:
    *   Vá em **Authentication -> Sign-in Method** e ative o provedor **Anônimo** e o **Google**.
-   *   Crie o banco **Firestore Database** e insira as seguintes regras de segurança na aba **Rules**:
+   *   Crie o banco **Firestore Database**. As regras de segurança ficam versionadas no
+       arquivo [firestore.rules](firestore.rules) deste repositório.
 
-```javascript
-rules_version = '2';
-service cloud.firestore {
-  match /databases/{database}/documents {
+Para publicá-las, instale a [Firebase CLI](https://firebase.google.com/docs/cli) e rode:
 
-    // Perfil público. O dono só altera o próprio doc e o rating
-    // não pode saltar mais de 64 pontos por gravação (trava spoof de ranking).
-    match /players/{uid} {
-      allow read: if true;
-      allow create: if request.auth != null && request.auth.uid == uid;
-      allow update: if request.auth != null && request.auth.uid == uid
-        && request.resource.data.rating is int
-        && request.resource.data.rating >= 100
-        && request.resource.data.rating <= 4000
-        && (request.resource.data.rating - resource.data.rating) <= 64
-        && (request.resource.data.rating - resource.data.rating) >= -64;
-    }
-
-    // Fila de matchmaking. O update aberto é necessário porque o
-    // pareador grava o gameId na entrada do oponente.
-    match /lobby/{uid} {
-      allow read, update: if request.auth != null;
-      allow create, delete: if request.auth != null && request.auth.uid == uid;
-    }
-
-    // Partidas: criar livre; atualizar só pelos dois jogadores
-    // (terceiros não podem sabotar). 'waiting' permite o 2º jogador entrar.
-    match /games/{id} {
-      allow read, create: if request.auth != null;
-      allow update: if request.auth != null && (
-        request.auth.uid == resource.data.white.uid
-        || (resource.data.black != null && request.auth.uid == resource.data.black.uid)
-        || resource.data.status == 'waiting'
-      );
-    }
-
-    match /challenges/{id} {
-      allow read, write: if request.auth != null;
-    }
-
-    // Histórico só pode ser gravado por um dos participantes da partida.
-    match /match_history/{id} {
-      allow read: if request.auth != null;
-      allow create, update: if request.auth != null
-        && request.auth.uid in request.resource.data.players;
-    }
-  }
-}
+```bash
+firebase deploy --only firestore:rules
 ```
 
-> **Importante:** estas regras impedem que terceiros adulterem partidas/histórico e travam o salto de Elo, mas o cálculo do rating ainda acontece no cliente (arquitetura serverless). Para reforçar contra abuso de cota e bots, ative no console o **App Check** (reCAPTCHA) e restrinja os **domínios autorizados** em *Authentication → Settings → Authorized domains* (deixe só o domínio do Vercel e `localhost`). Em produção real, o cálculo de Elo e a gravação do histórico deveriam migrar para uma **Cloud Function** com verificação de servidor.
+   *   Alternativamente, copie o conteúdo de [firestore.rules](firestore.rules) e cole na
+       aba **Rules** do Firestore Console.
+
+> **Flag de desenvolvedor:** o acesso a dica/análise no modo online é controlado pelo campo
+> `dev: true` no documento `players/{uid}` — gravável **apenas** via Console/Admin SDK (as
+> regras impedem o cliente de defini-lo). Não é mais liberado digitando um apelido.
+
+> **Segurança:** as regras travam a adulteração de partidas/histórico por terceiros e limitam o salto de Elo, mas o cálculo do rating ainda acontece no cliente (arquitetura serverless). Para reforçar contra abuso de cota e bots, ative o **App Check** (reCAPTCHA) e restrinja os **domínios autorizados** em *Authentication → Settings → Authorized domains* (deixe só o domínio do Vercel e `localhost`). Em produção real, o cálculo de Elo e a gravação do histórico deveriam migrar para uma **Cloud Function** com verificação de servidor.
 
 ---
 
@@ -175,8 +165,11 @@ Ou abra `tests/index.html` no navegador (via servidor estático) para o relatór
 | :--- | :--- |
 | `js/rules.js` | Motor lógico puro do jogo de damas (geração e validação de lances, notação, serialização). |
 | `js/ai.js` | Inteligência Artificial baseada em algoritmo Minimax (poda alfa-beta, quiescence e dicas). |
-| `js/elo.js` | Lógica de cálculo de rating Elo e distribuição de patentes/títulos de rank. |
-| `js/online.js` | Integração Firebase: matchmaking, salas privadas, desafios, reconexão de sessão e histórico. |
+| `js/elo.js` | Lógica de cálculo de rating Elo (K dinâmico) e título derivado da liga. |
+| `js/leagues.js` | Sistema de ligas competitivas (9 ligas × divisões I–IV) a partir do Elo. |
+| `js/achievements.js` | Catálogo de conquistas e avaliação dos predicados ao fim da partida. |
+| `js/i18n.js` | Internacionalização (PT/EN/ES) dos rótulos da interface. |
+| `js/online.js` | Integração Firebase: matchmaking, salas, desafios, amigos, conquistas, perfil público, busca, reconexão e histórico. |
 | `js/main.js` | Orquestrador principal (máquina de estados, loop de turnos, inputs 3D e integrações). |
 | `js/scene.js` | Configuração da cena, renderização, iluminação e materiais em Three.js. |
 | `js/board3d.js` | Renderização e montagem do modelo 3D do tabuleiro. |

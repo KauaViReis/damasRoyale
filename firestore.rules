@@ -1,0 +1,100 @@
+rules_version = '2';
+
+/* ============================================================
+   DAMAS ROYALE — Regras de Segurança do Firestore
+   Endurece o modelo: dono escreve o próprio perfil, partidas só
+   pelos participantes, histórico imutável, e a flag 'dev' nunca
+   pode ser forjada pelo cliente.
+   Deploy:  firebase deploy --only firestore:rules
+   ============================================================ */
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isAuthed() { return request.auth != null; }
+    function isOwner(uid) { return isAuthed() && request.auth.uid == uid; }
+
+    /* ===== Perfis ===== */
+    match /players/{uid} {
+      allow read: if true;                       /* perfil público */
+
+      /* 'dev' (acesso a dica/análise no online) só via Admin/console:
+         nunca pode nascer true nem ser alterado pelo cliente. */
+      allow create: if isOwner(uid)
+                    && (!('dev' in request.resource.data) || request.resource.data.dev == false);
+
+      allow update: if isOwner(uid)
+                    /* não pode mexer na flag dev */
+                    && request.resource.data.get('dev', false) == resource.data.get('dev', false)
+                    /* variação de rating por escrita limitada (anti-forja) */
+                    && (
+                         !('rating' in request.resource.data) ||
+                         !('rating' in resource.data) ||
+                         math.abs(request.resource.data.rating - resource.data.rating) <= 64
+                       );
+
+      allow delete: if false;
+
+      /* Amigos do jogador */
+      match /friends/{friendUid} {
+        allow read: if true;                     /* visível no perfil público */
+        allow write: if isOwner(uid);
+      }
+
+      /* Conquistas desbloqueadas (não se desfazem) */
+      match /achievements/{achId} {
+        allow read: if true;
+        allow create: if isOwner(uid);
+        allow update, delete: if false;
+      }
+    }
+
+    /* ===== Fila de matchmaking =====
+       Pareamento escreve no doc alheio (define gameId), então qualquer
+       autenticado pode ler/escrever a fila. */
+    match /lobby/{uid} {
+      allow read, create, update, delete: if isAuthed();
+    }
+
+    /* ===== Partidas ===== */
+    match /games/{id} {
+      allow read: if true;                       /* espectadores */
+      allow create: if isAuthed();
+      /* Updates só pelos participantes; ao entrar (black ainda nulo) o
+         próprio ingressante grava. Espectador não escreve. */
+      allow update: if isAuthed() && (
+        resource.data.white.uid == request.auth.uid ||
+        !('black' in resource.data) || resource.data.black == null ||
+        resource.data.black.uid == request.auth.uid
+      );
+      allow delete: if isAuthed() && resource.data.white.uid == request.auth.uid;
+    }
+
+    /* ===== Desafios (id == uid do remetente) ===== */
+    match /challenges/{id} {
+      allow read: if isAuthed();
+      allow create: if isOwner(id);
+      allow update, delete: if isAuthed() && (
+        resource.data.from.uid == request.auth.uid ||
+        resource.data.to.uid == request.auth.uid
+      );
+    }
+
+    /* ===== Pedidos de amizade (espelha challenges) ===== */
+    match /friend_requests/{id} {
+      allow read: if isAuthed();
+      allow create: if isOwner(id);
+      allow update, delete: if isAuthed() && (
+        resource.data.from.uid == request.auth.uid ||
+        resource.data.to.uid == request.auth.uid
+      );
+    }
+
+    /* ===== Histórico de partidas ===== */
+    match /match_history/{id} {
+      allow read: if true;                       /* replay compartilhável */
+      allow create: if isAuthed() && request.auth.uid in request.resource.data.players;
+      allow update: if isAuthed() && request.auth.uid in resource.data.players;
+      allow delete: if false;
+    }
+  }
+}
