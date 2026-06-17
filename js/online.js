@@ -76,7 +76,7 @@ export class OnlineManager {
           cameFromGoogle = true;
           await this._loadProfile(null);
           await this._syncGoogleInfo(result.user);
-          this.redirectResultMsg = 'CONTA GOOGLE VINCULADA ✓';
+          this.redirectResultMsg = '✓ Conta Google conectada — seu progresso foi salvo';
         }
       } catch (e) {
         if (e.code === 'auth/credential-already-in-use') {
@@ -87,7 +87,7 @@ export class OnlineManager {
             cameFromGoogle = true;
             await this._loadProfile(null);
             await this._syncGoogleInfo(res.user);
-            this.redirectResultMsg = 'CONECTADO À SUA CONTA GOOGLE';
+            this.redirectResultMsg = 'Bem-vindo de volta! Entramos na sua conta Google';
           }
         } else {
           console.error('Erro no getRedirectResult:', e);

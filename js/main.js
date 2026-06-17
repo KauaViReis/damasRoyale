@@ -21,7 +21,7 @@ import { InputManager } from './input.js';
 import { OnlineManager } from './online.js';
 import { leagueOf } from './leagues.js';
 import { evaluateAchievements, getAchievement } from './achievements.js';
-import { applyI18n, LANGS } from './i18n.js';
+import { applyI18n, LANGS, t } from './i18n.js';
 import { isFirebaseConfigured } from './firebase-config.js';
 import { sleep, vibrate, setHaptics, tween, easeOutBack } from './utils.js';
 import { PREFS_KEY, ACTIVE_KEY, ST, TC_PRESETS, REASON_TXT } from './constants.js';
@@ -1299,11 +1299,16 @@ ui.segBind('#segHaptics', v => {
 });
 
 /* Idioma (i18n PT/EN/ES) */
-applyI18n(lang);
+function refreshLang() {
+  applyI18n(lang);
+  ui._authSigninLabel = t('authSignin', lang);
+  ui.setAuthUI(online.profile);   /* re-aplica nome/rótulo do chip de conta */
+}
+refreshLang();
 ui.setSeg('#mSegLang', lang);
 ui.segBind('#mSegLang', v => {
   lang = v;
-  applyI18n(lang);
+  refreshLang();
   savePrefs();
 });
 
@@ -1548,16 +1553,27 @@ ui.$('#lbList').addEventListener('click', e => {
   if (el) openPublicProfile(el.dataset.uid);
 });
 
-ui.$('#btnGoogleLink').onclick = async () => {
+/* Entrar com Google: conecta a conta. Se já houver um perfil Google,
+   o online.init() entra nele automaticamente ao voltar do redirect. */
+async function connectGoogle() {
   if (!(await ensureOnline())) return;
+  if (online.profile && online.profile.google) {
+    /* Já conectado → abre o perfil em vez de reconectar */
+    openProfile({ uid: online.uid, ...online.profile }, true);
+    return;
+  }
   try {
-    ui.toast('Redirecionando para o Google...', true);
-    await online.linkGoogle();
+    ui.toast('Redirecionando para o Google…');
+    await online.linkGoogle();   /* redireciona; init() trata o retorno */
   } catch (e) {
     console.error(e);
-    ui.toast('ERRO AO REDIRECIONAR', true);
+    ui.toast('ERRO AO CONECTAR COM O GOOGLE', true);
   }
-};
+}
+
+ui.$('#btnGoogleLink').onclick = connectGoogle;
+ui.$('#googleConnectBtn').onclick = connectGoogle;
+ui.$('#authChip').onclick = connectGoogle;
 
 /* --- Ranking + busca de jogadores --- */
 async function loadLeaderboard() {

@@ -1432,9 +1432,65 @@ body {
   #history { width: 230px; }
 }
 
+/* ===== CHIP DE CONTA + BOTÃO GOOGLE ===== */
+.gIcon { width: 18px; height: 18px; flex: 0 0 18px; display: block; }
+
+#authChip {
+  position: fixed;
+  top: 14px;
+  right: 16px;
+  z-index: 8;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 13px 7px 10px;
+  border-radius: 999px;
+  cursor: pointer;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: .06em;
+  color: var(--txt);
+  transition: transform .2s, border-color .2s, background .2s;
+}
+
+#authChip:hover { transform: translateY(-1px); border-color: var(--acc); }
+#authChip.connected { border-color: var(--acc); padding-left: 6px; }
+#authChip img {
+  width: 26px; height: 26px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 1.5px solid var(--acc);
+}
+
+.googleBtn {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 11px;
+  margin-bottom: 16px;
+  border-radius: 11px;
+  border: 1px solid var(--line);
+  background: #fff;
+  color: #3c4043;
+  font-family: 'Sora', sans-serif;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: .02em;
+  cursor: pointer;
+  transition: filter .2s, transform .2s, box-shadow .2s;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, .25);
+}
+
+.googleBtn:hover { filter: brightness(.97); transform: translateY(-1px); box-shadow: 0 4px 14px rgba(0, 0, 0, .3); }
+.googleBtn .gIcon { width: 20px; height: 20px; flex: 0 0 20px; }
+
 @media (max-width: 860px) {
   #cfgToggle { display: flex; }
   #histToggle { display: flex; }
+  #authChip { top: 12px; right: 70px; padding: 6px; }
+  #authChip span { display: none; }
   #config { display: none; top: 72px; right: 12px; }
   #config.open { display: block; }
   #history { display: none; bottom: 68px; right: 12px; width: calc(100vw - 24px); max-height: 200px; }

@@ -26,7 +26,9 @@ const DICT = {
     start: 'COMEÇAR PARTIDA',
     language: 'IDIOMA',
     rematch: 'JOGAR NOVAMENTE', share: '📸 COMPARTILHAR RESULTADO',
-    backMenu: 'VOLTAR AO MENU'
+    backMenu: 'VOLTAR AO MENU',
+    googleConnect: 'Entrar com Google', googleConnected: '✓ Conectado com Google',
+    authSignin: 'ENTRAR'
   },
   en: {
     subtitle: 'OFFICIAL BRAZILIAN RULES',
@@ -46,7 +48,9 @@ const DICT = {
     start: 'START GAME',
     language: 'LANGUAGE',
     rematch: 'PLAY AGAIN', share: '📸 SHARE RESULT',
-    backMenu: 'BACK TO MENU'
+    backMenu: 'BACK TO MENU',
+    googleConnect: 'Sign in with Google', googleConnected: '✓ Signed in with Google',
+    authSignin: 'SIGN IN'
   },
   es: {
     subtitle: 'REGLAS OFICIALES BRASILEÑAS',
@@ -66,7 +70,9 @@ const DICT = {
     start: 'COMENZAR PARTIDA',
     language: 'IDIOMA',
     rematch: 'JUGAR DE NUEVO', share: '📸 COMPARTIR RESULTADO',
-    backMenu: 'VOLVER AL MENÚ'
+    backMenu: 'VOLVER AL MENÚ',
+    googleConnect: 'Entrar con Google', googleConnected: '✓ Conectado con Google',
+    authSignin: 'ENTRAR'
   }
 };
 
