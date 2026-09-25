@@ -30,7 +30,7 @@ A interface conta com uma estética premium em *glassmorphism* escuro e detalhes
 | :---: | :--- | :---: |
 | 🥇 1º | **KAUA3** | 1240 |
 
-*Última atualização: 23/09/2026, 23:28 (Automático)*
+*Última atualização: 24/09/2026, 23:45 (Automático)*
 
 <!-- TOP_RANKING_END -->
 
