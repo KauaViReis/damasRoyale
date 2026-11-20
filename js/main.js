@@ -1554,7 +1554,7 @@ ui.$('#lbList').addEventListener('click', e => {
 });
 
 /* Entrar com Google: conecta a conta. Se já houver um perfil Google,
-   o online.init() entra nele automaticamente ao voltar do redirect. */
+   entra nele automaticamente (via popup, ou redirect se popup bloqueado). */
 async function connectGoogle() {
   if (!(await ensureOnline())) return;
   if (online.profile && online.profile.google) {
@@ -1563,11 +1563,29 @@ async function connectGoogle() {
     return;
   }
   try {
-    ui.toast('Redirecionando para o Google…');
-    await online.linkGoogle();   /* redireciona; init() trata o retorno */
+    const res = await online.linkGoogle();
+    if (res && res.redirected) {
+      ui.toast('Redirecionando para o Google…');
+      return;
+    }
+    if (res && res.linked) {
+      ui.updateRatingBadge(online.profile);
+      online.updateActive();
+      ui.toast(res.msg);
+      if (ui.$('#profilePanel').style.display !== 'none') {
+        ui.renderProfile(online.profile);
+      }
+    }
   } catch (e) {
+    if (e.code === 'auth/popup-closed-by-user' || e.code === 'auth/cancelled-popup-request') {
+      return;
+    }
     console.error(e);
-    ui.toast('ERRO AO CONECTAR COM O GOOGLE', true);
+    if (e.code === 'auth/unauthorized-domain') {
+      ui.toast('DOMÍNIO NÃO AUTORIZADO NO FIREBASE', true);
+    } else {
+      ui.toast('ERRO AO CONECTAR COM O GOOGLE', true);
+    }
   }
 }
 
@@ -2028,6 +2046,11 @@ if (effectsOn) {
       }
     }
     return;
+  }
+  if (location.hash === '#online') {
+    ui.setSeg('#mSegMode', 'online');
+    mode = 'online';
+    ui.setMenuTab('online');
   }
   /* Sessão pendente? (FASE 3) */
   let saved = null;

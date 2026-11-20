@@ -143,10 +143,34 @@ export class OnlineManager {
   /* Vincula a conta Google ao perfil anônimo (preserva o Elo).
      Se o Google já tiver outro perfil, troca para ele. */
   async linkGoogle() {
-    const { GoogleAuthProvider, linkWithRedirect } = this.authM;
+    const { GoogleAuthProvider, linkWithPopup, linkWithRedirect, signInWithCredential } = this.authM;
     const provider = new GoogleAuthProvider();
     provider.setCustomParameters({ prompt: 'select_account' });
-    await linkWithRedirect(this.auth.currentUser, provider);
+    try {
+      const result = await linkWithPopup(this.auth.currentUser, provider);
+      if (result && result.user) {
+        this.uid = result.user.uid;
+        await this._loadProfile(null);
+        await this._syncGoogleInfo(result.user);
+      }
+      return { linked: true, msg: '✓ Conta Google conectada — seu progresso foi salvo' };
+    } catch (e) {
+      if (e.code === 'auth/credential-already-in-use') {
+        const credential = GoogleAuthProvider.credentialFromError(e);
+        if (credential) {
+          const res = await signInWithCredential(this.auth, credential);
+          this.uid = res.user.uid;
+          await this._loadProfile(null);
+          await this._syncGoogleInfo(res.user);
+          return { linked: true, msg: 'Bem-vindo de volta! Entramos na sua conta Google' };
+        }
+      }
+      if (e.code === 'auth/popup-blocked') {
+        await linkWithRedirect(this.auth.currentUser, provider);
+        return { redirected: true };
+      }
+      throw e;
+    }
   }
 
   async _syncGoogleInfo(user) {
@@ -296,7 +320,8 @@ export class OnlineManager {
 
   async joinRoom(code) {
     const f = this.f;
-    code = code.trim().toUpperCase();
+    code = (code || '').trim().toUpperCase();
+    if (!code) throw new Error('INFORME O CÓDIGO DA SALA');
     const ref = f.doc(this.db, 'games', code);
     await f.runTransaction(this.db, async tx => {
       const snap = await tx.get(ref);

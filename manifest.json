@@ -12,7 +12,7 @@
   "categories": ["games", "entertainment"],
   "icons": [
     {
-      "src": "icon.svg",
+      "src": "assets/svg/icon.svg",
       "sizes": "any",
       "type": "image/svg+xml",
       "purpose": "any maskable"

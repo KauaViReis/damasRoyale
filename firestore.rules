@@ -37,7 +37,8 @@ service cloud.firestore {
       /* Amigos do jogador */
       match /friends/{friendUid} {
         allow read: if true;                     /* visível no perfil público */
-        allow write: if isOwner(uid);
+        allow create, update: if isOwner(uid) || (isAuthed() && request.auth.uid == friendUid);
+        allow delete: if isOwner(uid) || (isAuthed() && request.auth.uid == friendUid);
       }
 
       /* Conquistas desbloqueadas (não se desfazem) */
