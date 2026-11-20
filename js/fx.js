@@ -28,6 +28,10 @@ export class FXManager {
     this.weatherMatRain = new THREE.MeshBasicMaterial({ color: 0x88CCFF, transparent: true, opacity: 0.4, depthWrite: false });
     this.weatherMatEmber = new THREE.MeshBasicMaterial({ color: 0xFF5500, transparent: true, opacity: 0.9, depthWrite: false });
 
+    /* Qualidade adaptativa */
+    this.qualityTier = 'high';
+    this.particleScale = 1;
+
     /* Geometrias reutilizáveis */
     this.discGeo = new THREE.CircleGeometry(0.34, 40);
     this.ringGeo = new THREE.RingGeometry(0.40, 0.47, 44);
@@ -47,6 +51,11 @@ export class FXManager {
     this.ghostMesh = new THREE.Mesh(this.ghostGeo, this.ghostMat);
     this.ghostMesh.visible = false;
     this.scene.add(this.ghostMesh);
+  }
+
+  setQuality(tier) {
+    this.qualityTier = tier;
+    this.particleScale = tier === 'low' ? 0.25 : (tier === 'medium' ? 0.6 : 1);
   }
 
   /* Disco indicador de destino */
@@ -81,22 +90,28 @@ export class FXManager {
 
   /* Limpa todos os indicadores (discos + anéis) */
   clearFx() {
-    for (const m of this.activeFx) this.fxGroup.remove(m);
+    for (const m of this.activeFx) {
+      this.fxGroup.remove(m);
+      if (m.material) m.material.dispose();
+    }
     this.activeFx = [];
   }
 
   /* Remove apenas discos (mantém anéis) */
   clearDiscs() {
     this.activeFx = this.activeFx.filter(m => {
-      if (m.userData.kind === 'disc') { this.fxGroup.remove(m); return false; }
+      if (m.userData.kind === 'disc') {
+        this.fxGroup.remove(m);
+        if (m.material) m.material.dispose();
+        return false;
+      }
       return true;
     });
   }
 
   /* Marca a última jogada */
   setLastMove(from, to) {
-    for (const m of this.lastMarks) this.fxGroup.remove(m);
-    this.lastMarks = [];
+    this.clearLastMove();
     for (const [r, c] of [from, to]) {
       const mat = new THREE.MeshBasicMaterial({
         color: 0xE3A94E, transparent: true, opacity: 0.14, depthWrite: false
@@ -111,14 +126,17 @@ export class FXManager {
   }
 
   clearLastMove() {
-    for (const m of this.lastMarks) this.fxGroup.remove(m);
+    for (const m of this.lastMarks) {
+      this.fxGroup.remove(m);
+      if (m.material) m.material.dispose();
+    }
     this.lastMarks = [];
   }
 
   /* ====== PARTÍCULAS DE CAPTURA ====== */
   spawnCaptureParticles(r, c, color) {
     const origin = worldPos(r, c);
-    const count = 10;
+    const count = Math.max(2, Math.round(10 * this.particleScale));
     for (let i = 0; i < count; i++) {
       const mat = new THREE.MeshBasicMaterial({
         color, transparent: true, opacity: 0.9
@@ -276,8 +294,9 @@ export class FXManager {
       if (m.userData.kind === 'ring') m.rotation.z = time * 0.8;
     }
 
-    /* Clima Contínuo */
-    if (this.weatherType !== 'none' && Math.random() < 0.35) {
+    /* Clima Contínuo (desativado no tier low para economizar GPU/bateria) */
+    const weatherChance = this.qualityTier === 'low' ? 0 : (this.qualityTier === 'medium' ? 0.15 : 0.35);
+    if (this.weatherType !== 'none' && Math.random() < weatherChance) {
       let mat, px, py, pz, vx, vy, vz, grav, ml;
       let sx = 1, sy = 1, sz = 1;
 

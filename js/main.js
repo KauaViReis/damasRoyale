@@ -12,8 +12,8 @@ import { bestMoveAI, getHint, evaluate } from './ai.js';
 import { BOARD_THEMES, PIECE_THEMES } from './themes.js';
 import { AudioManager } from './audio.js';
 import { MoveHistory } from './history.js';
-import { createScene, createComposer } from './scene.js';
-import { createBoard, worldPos } from './board3d.js';
+import { createScene, createComposer, applyQualityTier } from './scene.js';
+import { createBoard, worldPos, getBoardTexture } from './board3d.js';
 import { createGeometries, makePiece, addCrown, animateStep } from './pieces3d.js';
 import { FXManager } from './fx.js';
 import { UIManager } from './ui.js';
@@ -150,10 +150,12 @@ let fogFarMul  = prefs.fogFar  ?? 3.8;   /* multiplicador de fog longe */
 
 /* ============ INICIALIZAÇÃO ============ */
 const canvas = document.getElementById('c3d');
-const { scene, camera, renderer, materials, resize } = createScene(canvas);
+const { scene, camera, renderer, materials, lights, qualityTier: initialTier, resize } = createScene(canvas);
+let currentQualityTier = initialTier;
 const { squares } = createBoard(scene, materials);
 const geos = createGeometries();
 const fx = new FXManager(scene, camera);
+fx.setQuality(currentQualityTier);
 const audio = new AudioManager();
 const ui = new UIManager();
 const history = new MoveHistory();
@@ -167,10 +169,35 @@ setHaptics(hapticsOn);
 history.bind(document.getElementById('history'));
 
 /* ============ PEÇAS ============ */
+let capturedMeshes = [];
+let capTrayCount = { '1': 0, '-1': 0 };
+
 function clearPieces() {
-  for (const p of pieces) scene.remove(p.mesh);
+  for (const p of pieces) {
+    scene.remove(p.mesh);
+    if (p.mesh.material) p.mesh.material.dispose();
+  }
   pieces = [];
   grid.fill(null);
+  for (const m of capturedMeshes) {
+    scene.remove(m);
+    if (m.material) m.material.dispose();
+  }
+  capturedMeshes = [];
+  capTrayCount = { '1': 0, '-1': 0 };
+}
+
+function addCapturedToken(player) {
+  if (currentQualityTier === 'low') return;
+  const th = PIECE_THEMES[pieceThemeIdx];
+  const tok = makePiece(scene, geos, player, 0, 0, th, currentQualityTier);
+  const side = player === 1 ? -1 : 1;
+  const n = capTrayCount[String(player)]++;
+  const col = Math.floor(n / 6);
+  const row = n % 6;
+  tok.mesh.position.set(side * (5.15 + col * 0.78), -0.35, (row - 2.5) * 0.88);
+  tok.mesh.scale.set(0.82, 0.82, 0.82);
+  capturedMeshes.push(tok.mesh);
 }
 
 function buildPieces(animateDrop = false) {
@@ -179,7 +206,7 @@ function buildPieces(animateDrop = false) {
   for (let r = 0; r < 8; r++) for (let c = 0; c < 8; c++) {
     const v = bd[idx(r, c)];
     if (v === 0) continue;
-    const p = makePiece(scene, geos, v > 0 ? 1 : -1, r, c, th);
+    const p = makePiece(scene, geos, v > 0 ? 1 : -1, r, c, th, currentQualityTier);
     if (Math.abs(v) === 2) { p.king = true; addCrown(p, geos, materials.gold, false); }
     pieces.push(p);
     grid[idx(r, c)] = p;
@@ -206,10 +233,17 @@ function buildPieces(animateDrop = false) {
 function applyBoardTheme(i) {
   boardThemeIdx = i;
   const t = BOARD_THEMES[i];
+  const tex = getBoardTexture(t.nome);
   materials.lightSq.color.set(t.light);
   materials.darkSq.color.set(t.dark);
   materials.frame.color.set(t.frame);
   materials.table.color.set(t.table);
+  materials.lightSq.map = tex;
+  materials.darkSq.map = tex;
+  materials.frame.map = tex;
+  materials.lightSq.needsUpdate = true;
+  materials.darkSq.needsUpdate = true;
+  materials.frame.needsUpdate = true;
   scene.background = new THREE.Color(t.bg);
   scene.fog = new THREE.Fog(t.fogColor || t.bg, t.fogNear || 16, t.fogFar || 42);
   fx.setWeather(t.weather || 'none');
@@ -219,8 +253,17 @@ function applyBoardTheme(i) {
 
 function applyPieceTheme(i) {
   pieceThemeIdx = i;
-  const th = PIECE_THEMES[i];
-  for (const p of pieces) p.mesh.material.color.set(p.player === 1 ? th.p1 : th.p2);
+  const selPos = selected ? [selected.r, selected.c] : null;
+  buildPieces(false);
+  if (selPos) {
+    const np = grid[idx(selPos[0], selPos[1])];
+    if (np) {
+      selected = np;
+      np.mesh.material.emissive.set(0xE3A94E);
+      np.mesh.material.emissiveIntensity = 0.32;
+      np.mesh.position.y = 0.12;
+    }
+  }
   ui.updateScore(capCount, winCount, mode, pieceThemeIdx);
   refreshTurnUI();
   ui.updatePieceSwatches(i);
@@ -365,6 +408,7 @@ function onCaptureFx(victim, s, slowMotion = false) {
   fx.shake(slowMotion ? 0.6 : 0.3);
   vibrate(40);
   fx.spawnCaptureParticles(s.capR, s.capC, moverColorHex(victim.player));
+  addCapturedToken(victim.player);
   scene.remove(victim.mesh);
   pieces = pieces.filter(p => p !== victim);
   capCount[String(turn)]++;
@@ -431,6 +475,7 @@ async function finalizeMove(move) {
   if (mode === 'pve' && mover === 1) saveState();
 
   history.record(move, mover);
+  if (mode !== 'replay') gameMoves.push(serializeMove(move));
   applyMove(bd, move);
 
   if (piece && !piece.king && last.r === (mover === 1 ? 0 : 7)) {
@@ -551,6 +596,7 @@ function applySilently(mv) {
 
 /* ============ FIM DE JOGO ============ */
 let cinematicOrbit = false;
+let gameMoves = [];
 
 function gameOver(winner, reason = '', fromServer = false) {
   if (state === ST.over) return;
@@ -571,8 +617,9 @@ function gameOver(winner, reason = '', fromServer = false) {
   audio.win();
   ui.showGameOver(winner, capCount, mode, pieceThemeIdx, REASON_TXT[reason] || '');
   lastResult = { winner, reason };
-  /* Revanche e compartilhar: ocultos para o espectador */
+  /* Revanche, análise e compartilhar: ocultos para o espectador */
   ui.$('#btnRematch').style.display = spectating ? 'none' : 'block';
+  ui.$('#btnAnalyze').style.display = (!spectating && gameMoves.length > 0) ? 'block' : 'none';
   ui.$('#btnShareResult').style.display = spectating ? 'none' : 'block';
 
   if (mode === 'online') {
@@ -583,6 +630,7 @@ function gameOver(winner, reason = '', fromServer = false) {
 
 function resetMatchState(animatePieces = false) {
   cinematicOrbit = false;
+  if (mode !== 'replay') gameMoves = [];
   ui.hideOverlay('over');
   ui.setRatingDelta('');
   ui.setPresence(null);
@@ -651,9 +699,10 @@ function enterReplay(match) {
   replayIdx = 0;
   replayPlaying = false;
   replayToken++;
+  const fmtP = p => p.rating ? `${p.name} (${p.rating})` : p.name;
   ui.nameOverride = {
-    '1': `${match.white.name} (${match.white.rating})`,
-    '-1': `${match.black.name} (${match.black.rating})`
+    '1': fmtP(match.white),
+    '-1': fmtP(match.black)
   };
   ui.hideOverlay('profilePanel');
   ui.hideOverlay('menu');
@@ -1785,6 +1834,21 @@ ui.$('#btnRematch').onclick = async () => {
   challengePlayer(opp);
 };
 ui.$('#btnMenu').onclick = backToMenu;
+ui.$('#btnAnalyze').onclick = () => {
+  if (!gameMoves.length) return;
+  const savedMoves = gameMoves.slice();
+  const names = ui.nameOverride || {
+    '1': ui.pName(1, mode, pieceThemeIdx),
+    '-1': ui.pName(-1, mode, pieceThemeIdx)
+  };
+  evalOn = true;
+  ui.setSeg('#segEval', 1);
+  enterReplay({
+    white: { name: names['1'], rating: '' },
+    black: { name: names['-1'], rating: '' },
+    moves: savedMoves.map(m => JSON.stringify({ m }))
+  });
+};
 
 /* Gera uma imagem (PNG) do resultado para compartilhar / baixar */
 function buildResultCanvas() {
@@ -1913,14 +1977,73 @@ setInterval(() => {
   }
 }, 250);
 
+/* Hover tátil nas peças (desktop) */
+let hoveredPiece = null;
+if (window.matchMedia && window.matchMedia('(pointer: fine)').matches) {
+  const hoverRay = new THREE.Raycaster();
+  const hoverPtr = new THREE.Vector2();
+  canvas.addEventListener('pointermove', e => {
+    if (state !== ST.human || input.dragging || currentQualityTier === 'low') {
+      if (hoveredPiece && hoveredPiece !== selected) { hoveredPiece.mesh.position.y = 0; hoveredPiece = null; }
+      return;
+    }
+    const rect = canvas.getBoundingClientRect();
+    hoverPtr.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
+    hoverPtr.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
+    hoverRay.setFromCamera(hoverPtr, camera);
+    const hits = hoverRay.intersectObjects(pieces.filter(p => p.player === turn).map(p => p.mesh), false);
+    const next = hits.length ? hits[0].object.userData.piece : null;
+    const canMove = next && allMoves.some(m => m.from[0] === next.r && m.from[1] === next.c);
+    const target = canMove ? next : null;
+    if (hoveredPiece && hoveredPiece !== target && hoveredPiece !== selected) {
+      hoveredPiece.mesh.position.y = 0;
+    }
+    hoveredPiece = target;
+    if (hoveredPiece && hoveredPiece !== selected) hoveredPiece.mesh.position.y = 0.05;
+    canvas.style.cursor = hoveredPiece ? 'pointer' : '';
+  });
+}
+
 const clock = new THREE.Clock();
 let prevTime = 0;
 let lastDrawT = 0;
+let fpsFrames = 0;
+let fpsAccum = 0;
+let lowFpsStrikes = 0;
+
 (function loop() {
   requestAnimationFrame(loop);
   const t = clock.getElapsedTime();
   const dt = t - prevTime;
   prevTime = t;
+
+  /* Adaptação automática de desempenho em runtime (PC fraco / celular) */
+  if (!document.hidden && state !== ST.menu && dt > 0 && dt < 0.25 && currentQualityTier !== 'low') {
+    fpsFrames++;
+    fpsAccum += dt;
+    if (fpsAccum >= 1.5) {
+      const avgFps = fpsFrames / fpsAccum;
+      fpsFrames = 0;
+      fpsAccum = 0;
+      if (avgFps < 32) {
+        lowFpsStrikes++;
+        if (lowFpsStrikes >= 2) {
+          lowFpsStrikes = 0;
+          currentQualityTier = currentQualityTier === 'high' ? 'medium' : 'low';
+          if (currentQualityTier === 'low' && effectsOn) {
+            effectsOn = false;
+            ui.setSeg('#segFx', 0);
+          }
+          applyQualityTier(currentQualityTier, { renderer, lights, fx });
+          ui.toast(currentQualityTier === 'low'
+            ? 'MODO DESEMPENHO ATIVADO AUTOMATICAMENTE'
+            : 'QUALIDADE GRÁFICA AJUSTADA PARA 60FPS');
+        }
+      } else {
+        lowFpsStrikes = 0;
+      }
+    }
+  }
 
   /* Névoa acompanha a distância da câmera: mantém o tabuleiro sempre
      nítido (sem esmaecer ao dar zoom out) e deixa a atmosfera só no fundo.

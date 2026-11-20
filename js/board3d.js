@@ -85,3 +85,95 @@ export function createBoard(scene, materials) {
 export function worldPos(r, c) {
   return new THREE.Vector3(c - 3.5, 0, r - 3.5);
 }
+
+const _texCache = new Map();
+
+export function getBoardTexture(themeName = '') {
+  const n = themeName.toUpperCase();
+  let kind = 'wood';
+  if (n.includes('ALTO CONTRASTE')) return null;
+  if (n.includes('ZEN')) kind = 'stone';
+  else if (n.includes('CYBER')) kind = 'cyber';
+  else if (n.includes('VULC')) kind = 'volcanic';
+
+  if (_texCache.has(kind)) return _texCache.get(kind);
+
+  const cvs = document.createElement('canvas');
+  cvs.width = 256;
+  cvs.height = 256;
+  const cx = cvs.getContext('2d');
+
+  /* Base neutra clara para multiplicar pela cor do material */
+  cx.fillStyle = '#efefef';
+  cx.fillRect(0, 0, 256, 256);
+
+  if (kind === 'wood') {
+    for (let y = 0; y < 256; y += 2) {
+      const v = 225 + Math.floor(Math.sin(y * 0.12) * 14 + (Math.random() - 0.5) * 14);
+      cx.fillStyle = `rgb(${v},${v},${v})`;
+      cx.fillRect(0, y, 256, 2);
+    }
+    cx.strokeStyle = 'rgba(0,0,0,0.06)';
+    cx.lineWidth = 1;
+    for (let i = 0; i < 18; i++) {
+      const y = (i / 18) * 256;
+      cx.beginPath();
+      cx.moveTo(0, y);
+      cx.bezierCurveTo(85, y + (Math.random() - 0.5) * 14, 170, y + (Math.random() - 0.5) * 14, 256, y);
+      cx.stroke();
+    }
+  } else if (kind === 'stone') {
+    for (let i = 0; i < 1200; i++) {
+      const x = Math.random() * 256, y = Math.random() * 256;
+      const v = 215 + Math.floor(Math.random() * 35);
+      cx.fillStyle = `rgb(${v},${v},${v})`;
+      cx.fillRect(x, y, 2, 2);
+    }
+    cx.strokeStyle = 'rgba(0,0,0,0.04)';
+    for (let y = 12; y < 256; y += 16) {
+      cx.beginPath();
+      cx.moveTo(0, y);
+      cx.lineTo(256, y);
+      cx.stroke();
+    }
+  } else if (kind === 'cyber') {
+    cx.fillStyle = '#e8e8e8';
+    cx.fillRect(0, 0, 256, 256);
+    cx.strokeStyle = 'rgba(255,255,255,0.35)';
+    cx.lineWidth = 2;
+    cx.strokeRect(4, 4, 248, 248);
+    cx.strokeStyle = 'rgba(0,0,0,0.12)';
+    cx.lineWidth = 1;
+    for (let i = 32; i < 256; i += 32) {
+      cx.beginPath(); cx.moveTo(i, 0); cx.lineTo(i, 256); cx.stroke();
+      cx.beginPath(); cx.moveTo(0, i); cx.lineTo(256, i); cx.stroke();
+    }
+  } else if (kind === 'volcanic') {
+    for (let i = 0; i < 1400; i++) {
+      const x = Math.random() * 256, y = Math.random() * 256;
+      const v = 195 + Math.floor(Math.random() * 50);
+      cx.fillStyle = `rgb(${v},${v},${v})`;
+      cx.fillRect(x, y, 3, 3);
+    }
+    cx.strokeStyle = 'rgba(0,0,0,0.14)';
+    cx.lineWidth = 1.5;
+    for (let i = 0; i < 8; i++) {
+      let x = Math.random() * 256, y = Math.random() * 256;
+      cx.beginPath();
+      cx.moveTo(x, y);
+      for (let s = 0; s < 4; s++) {
+        x += (Math.random() - 0.5) * 70;
+        y += (Math.random() - 0.5) * 70;
+        cx.lineTo(x, y);
+      }
+      cx.stroke();
+    }
+  }
+
+  const tex = new THREE.CanvasTexture(cvs);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  tex.wrapS = THREE.RepeatWrapping;
+  tex.wrapT = THREE.RepeatWrapping;
+  _texCache.set(kind, tex);
+  return tex;
+}

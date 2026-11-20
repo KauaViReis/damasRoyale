@@ -11,7 +11,7 @@ const PIECE_H = 0.17;
 
 /* Geometrias compartilhadas (criadas uma vez) */
 export function createGeometries() {
-  /* Peça (lathe) */
+  /* Peça padrão (lathe clássico torneado) */
   const pts = [
     new THREE.Vector2(0.001, 0),
     new THREE.Vector2(0.30, 0),
@@ -23,7 +23,44 @@ export function createGeometries() {
     new THREE.Vector2(0.22, 0.165),
     new THREE.Vector2(0.001, PIECE_H),
   ];
-  const pieceGeo = new THREE.LatheGeometry(pts, 48);
+  const pieceGeo = new THREE.LatheGeometry(pts, 44);
+
+  /* Cristal Encantado: gema facetada decagonal */
+  const crysPts = [
+    new THREE.Vector2(0.001, 0),
+    new THREE.Vector2(0.32, 0),
+    new THREE.Vector2(0.37, 0.06),
+    new THREE.Vector2(0.33, 0.13),
+    new THREE.Vector2(0.20, 0.175),
+    new THREE.Vector2(0.001, 0.185),
+  ];
+  const crystalGeo = new THREE.LatheGeometry(crysPts, 10);
+
+  /* Escudo Espartano: aba larga + cúpula central */
+  const spartanPts = [
+    new THREE.Vector2(0.001, 0),
+    new THREE.Vector2(0.36, 0),
+    new THREE.Vector2(0.38, 0.03),
+    new THREE.Vector2(0.35, 0.065),
+    new THREE.Vector2(0.26, 0.095),
+    new THREE.Vector2(0.14, 0.145),
+    new THREE.Vector2(0.06, 0.175),
+    new THREE.Vector2(0.001, 0.182),
+  ];
+  const spartanGeo = new THREE.LatheGeometry(spartanPts, 36);
+
+  /* Ficha de Cassino: borda reta alta + sulco interno */
+  const pokerPts = [
+    new THREE.Vector2(0.001, 0),
+    new THREE.Vector2(0.365, 0),
+    new THREE.Vector2(0.37, 0.145),
+    new THREE.Vector2(0.32, 0.155),
+    new THREE.Vector2(0.30, 0.13),
+    new THREE.Vector2(0.22, 0.13),
+    new THREE.Vector2(0.20, 0.15),
+    new THREE.Vector2(0.001, 0.15),
+  ];
+  const pokerGeo = new THREE.LatheGeometry(pokerPts, 36);
 
   /* Coroa: disco */
   const crPts = [
@@ -34,26 +71,66 @@ export function createGeometries() {
     new THREE.Vector2(0.16, 0.115),
     new THREE.Vector2(0.001, 0.12),
   ];
-  const crownDiscGeo = new THREE.LatheGeometry(crPts, 40);
+  const crownDiscGeo = new THREE.LatheGeometry(crPts, 36);
 
   /* Coroa: anel dourado */
-  const crownRingGeo = new THREE.TorusGeometry(0.235, 0.032, 16, 44);
+  const crownRingGeo = new THREE.TorusGeometry(0.235, 0.032, 14, 40);
 
-  return { pieceGeo, crownDiscGeo, crownRingGeo, PIECE_H };
+  return {
+    pieceGeo,
+    shapes: { standard: pieceGeo, crystal: crystalGeo, spartan: spartanGeo, poker: pokerGeo },
+    crownDiscGeo,
+    crownRingGeo,
+    PIECE_H
+  };
 }
 
-export function newPieceMat(color) {
+export function newPieceMat(color, theme = {}, tier = 'high') {
+  const isCrystal = theme.shape === 'crystal';
+  const isMetal = theme.mat === 'metal';
+
+  if (tier === 'low') {
+    return new THREE.MeshStandardMaterial({
+      color,
+      roughness: isMetal ? 0.3 : (isCrystal ? 0.18 : 0.38),
+      metalness: isMetal ? 0.8 : 0.08,
+      flatShading: isCrystal
+    });
+  }
+
+  if (isCrystal) {
+    return new THREE.MeshPhysicalMaterial({
+      color,
+      roughness: 0.12,
+      metalness: 0.05,
+      clearcoat: 1.0,
+      clearcoatRoughness: 0.08,
+      transparent: true,
+      opacity: 0.9,
+      flatShading: true
+    });
+  }
+
+  if (isMetal) {
+    return new THREE.MeshStandardMaterial({
+      color,
+      roughness: 0.26,
+      metalness: 0.86
+    });
+  }
+
   return new THREE.MeshPhysicalMaterial({
     color, roughness: 0.32, metalness: 0.08,
     clearcoat: 0.7, clearcoatRoughness: 0.25
   });
 }
 
-export function makePiece(scene, geos, player, r, c, theme) {
-  const mat = newPieceMat(player === 1 ? theme.p1 : theme.p2);
-  const mesh = new THREE.Mesh(geos.pieceGeo, mat);
-  mesh.castShadow = true;
-  mesh.receiveShadow = true;
+export function makePiece(scene, geos, player, r, c, theme, tier = 'high') {
+  const mat = newPieceMat(player === 1 ? theme.p1 : theme.p2, theme, tier);
+  const geo = (geos.shapes && geos.shapes[theme.shape]) || geos.pieceGeo;
+  const mesh = new THREE.Mesh(geo, mat);
+  mesh.castShadow = tier !== 'low';
+  mesh.receiveShadow = tier !== 'low';
   const p = worldPos(r, c);
   mesh.position.set(p.x, 0, p.z);
   scene.add(mesh);
