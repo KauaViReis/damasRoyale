@@ -618,7 +618,10 @@ function gameOver(winner, reason = '', fromServer = false) {
   ui.showGameOver(winner, capCount, mode, pieceThemeIdx, REASON_TXT[reason] || '');
   lastResult = { winner, reason };
   /* Revanche, análise e compartilhar: ocultos para o espectador */
-  ui.$('#btnRematch').style.display = spectating ? 'none' : 'block';
+  const btnRematch = ui.$('#btnRematch');
+  btnRematch.style.display = spectating ? 'none' : 'block';
+  btnRematch.disabled = false;
+  btnRematch.textContent = t('rematch', lang);
   ui.$('#btnAnalyze').style.display = (!spectating && gameMoves.length > 0) ? 'block' : 'none';
   ui.$('#btnShareResult').style.display = spectating ? 'none' : 'block';
 
@@ -672,7 +675,9 @@ function newGame() {
 }
 
 async function backToMenu() {
-  if (mode === 'online') {
+  stopReplay();
+  if (mode === 'online' || online.game) {
+    await online.cancelSearch();
     await online.leaveGame();
     localStorage.removeItem(ACTIVE_KEY);
     ui.nameOverride = null;
@@ -680,7 +685,6 @@ async function backToMenu() {
     ui.showRoomCode(null);
     ui.setSearchMode(false);
   }
-  stopReplay();
   ui.hideOverlay('over');
   ui.showOverlay('menu');
   ui.setActions({ hint: false, resign: false, draw: false, claim: false, emote: false, leaveWatch: false });
@@ -935,7 +939,8 @@ window.addEventListener('keydown', e => {
 });
 
 /* ============ ONLINE: CALLBACKS ============ */
-online.onMatchFound = ({ myColor: color, opponent, code, resume, moves, data }) => {
+online.onMatchFound = ({ myColor: color, opponent, code, resume, moves, data, isRematch }) => {
+  cleanupOutgoingChallenge();
   myColor = color;
   mode = 'online';
   spectating = color === 0;
@@ -958,8 +963,13 @@ online.onMatchFound = ({ myColor: color, opponent, code, resume, moves, data }) 
   ui.setSearchBand(null);
   ui.showRoomCode(null);
   ui.hideOverlay('menu');
+  ui.hideOverlay('over');
   ui.hideOverlay('spectatePanel');
-  ui.toast(spectating ? 'ASSISTINDO AO VIVO' : resume ? 'PARTIDA RECUPERADA!' : 'PARTIDA ENCONTRADA!');
+  ui.hideOverlay('playersPanel');
+  ui.hideOverlay('friendsPanel');
+  ui.hideOverlay('challengeWaitPanel');
+  ui.hideOverlay('challengeReceivePanel');
+  ui.toast(spectating ? 'ASSISTINDO AO VIVO' : isRematch ? '🔥 REVANCHE INICIADA!' : resume ? 'PARTIDA RECUPERADA!' : 'PARTIDA ENCONTRADA!');
 
   /* Relógio sincronizado (FASE 4) */
   onlineTc = data.tc || { base: 0, inc: 0 };
@@ -1037,6 +1047,19 @@ online.onDrawOffer = () => {
   if (state !== ST.over && !spectating) ui.showDrawOffer(true);
 };
 
+online.onRematchOffer = () => {
+  if (state === ST.over && !spectating) {
+    ui.toast('🔥 SEU OPONENTE QUER REVANCHE!');
+    const btn = ui.$('#btnRematch');
+    if (btn) {
+      btn.textContent = '✓ ACEITAR REVANCHE';
+      btn.disabled = false;
+    }
+    const sub = ui.$('#overSub');
+    if (sub) sub.textContent = 'SEU OPONENTE PEDIU REVANCHE!';
+  }
+};
+
 /* Presença e reconexão (FASE 3) */
 online.onPresence = seconds => {
   if (state === ST.over || state === ST.menu || spectating) {
@@ -1078,9 +1101,14 @@ function startIncomingChallengeListener() {
       }
       return;
     }
-    if (state !== ST.menu || activeIncomingChallenge || spectating || mode === 'online') {
+    const inActiveMatch = (state !== ST.menu && state !== ST.over) ||
+      (online.game && online.game.started && online.game.data && online.game.data.status === 'active');
+    if (inActiveMatch || activeIncomingChallenge || spectating) {
       online.declineChallenge(challenge);
       return;
+    }
+    if (state === ST.over) {
+      ui.hideOverlay('over');
     }
     activeIncomingChallenge = challenge;
     ui.$('#challengerName').textContent = challenge.from.name;
@@ -1822,7 +1850,21 @@ ui.$('#btnResetScore').onclick = () => {
 ui.$('#btnBackMenu').onclick = backToMenu;
 ui.$('#btnRematch').onclick = async () => {
   if (mode !== 'online') { newGame(); return; }
-  /* Revanche online: desafia o mesmo oponente (reusa o fluxo de desafio). */
+  const btn = ui.$('#btnRematch');
+  if (online.game && !online.game.spectate) {
+    btn.disabled = true;
+    const res = await online.requestRematch();
+    if (res && res.started) {
+      return;
+    }
+    if (res && res.offered) {
+      btn.textContent = 'AGUARDANDO OPONENTE…';
+      ui.toast('PEDIDO DE REVANCHE ENVIADO!');
+      return;
+    }
+    btn.disabled = false;
+  }
+  /* Fallback caso a sala já tenha sido encerrada: envia desafio direto */
   if (!lastOpponent) { ui.toast('OPONENTE INDISPONÍVEL PARA REVANCHE', true); return; }
   const opp = lastOpponent;
   await online.leaveGame();

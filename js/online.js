@@ -195,7 +195,8 @@ export class OnlineManager {
     tc = tc || { base: 0, inc: 0 };
     return {
       status, white, black, moves: [],
-      drawOffer: null, winner: null, reason: null,
+      drawOffer: null, rematchOffer: null, rematchCount: 0,
+      winner: null, reason: null,
       hbWhite: Date.now(), hbBlack: Date.now(),
       tc, clockW: tc.base, clockB: tc.base,
       turnStartedAt: this.f.serverTimestamp(),
@@ -207,12 +208,18 @@ export class OnlineManager {
   /* ============ PARTIDA RÁPIDA — FILA POR FAIXA DE ELO (FASE 5) ============ */
   async quickMatch(tc) {
     const f = this.f;
+    /* Garante que nenhuma partida encerrada ou busca anterior bloqueie o pareamento */
+    this._stopSearch();
+    if (this.game) {
+      await this.leaveGame().catch(() => {});
+    }
     this.searchStart = Date.now();
+    const safeTc = tc || { base: 0, inc: 0 };
     /* Entra na fila imediatamente (para que outros possam nos achar) */
     const myRef = f.doc(this.db, 'lobby', this.uid);
     await f.setDoc(myRef, {
-      ...this._me(), tc: tc || { base: 0, inc: 0 },
-      gameId: null, createdAt: f.serverTimestamp()
+      ...this._me(), tc: safeTc,
+      gameId: null, updatedAtMs: Date.now(), createdAt: f.serverTimestamp()
     });
     this.unsubLobby = f.onSnapshot(myRef, s => {
       const v = s.data();
@@ -222,15 +229,17 @@ export class OnlineManager {
         this._attachGame(v.gameId, 1);
       }
     });
-    /* Varre a fila agora e a cada 5 s, expandindo a faixa de Elo */
-    this._scanLobby();
-    this.searchTimer = setInterval(() => this._scanLobby(), 5000);
+    /* Varre a fila agora e a cada 4 s, expandindo a faixa de Elo */
+    await this._scanLobby();
+    if (!this.game && this.unsubLobby) {
+      this.searchTimer = setInterval(() => this._scanLobby(), 4000);
+    }
   }
 
   _searchBand() {
     const sec = (Date.now() - this.searchStart) / 1000;
-    if (sec >= 20) return Infinity;
-    return 150 + Math.floor(sec / 5) * 100;
+    if (sec >= 15) return Infinity;
+    return 200 + Math.floor(sec / 4) * 150;
   }
 
   async _scanLobby() {
@@ -238,17 +247,38 @@ export class OnlineManager {
     const f = this.f;
     const band = this._searchBand();
     if (this.onSearchBand) this.onSearchBand(band);
+    const now = Date.now();
+    const myRef = f.doc(this.db, 'lobby', this.uid);
+
+    /* Renova o heartbeat na fila para mostrar que estamos online procurando */
+    f.updateDoc(myRef, { updatedAtMs: now }).catch(() => {});
+
     let snap;
     try {
       snap = await f.getDocs(f.query(
-        f.collection(this.db, 'lobby'), f.orderBy('createdAt'), f.limit(15)
+        f.collection(this.db, 'lobby'), f.limit(40)
       ));
     } catch (e) { console.error('Erro ao varrer a fila:', e); return; }
 
-    const myRef = f.doc(this.db, 'lobby', this.uid);
+    /* Filtra candidatos realmente ativos (últimos 30s) e limpa docs fantasmas antigos */
+    const candidates = [];
     for (const d of snap.docs) {
       const e = d.data();
-      if (e.uid === this.uid || e.gameId) continue;
+      if (!e || e.uid === this.uid) continue;
+      if (e.gameId) continue;
+      const lastSeen = e.updatedAtMs || (e.createdAt?.toMillis ? e.createdAt.toMillis() : 0);
+      if (lastSeen > 0 && now - lastSeen > 45000) {
+        /* Remove entrada fantasma abandonada na fila */
+        if (now - lastSeen > 90000) f.deleteDoc(d.ref).catch(() => {});
+        continue;
+      }
+      candidates.push({ doc: d, data: e, lastSeen: lastSeen || now });
+    }
+
+    /* Ordena pelos que estão esperando há mais tempo entre os ativos */
+    candidates.sort((a, b) => a.lastSeen - b.lastSeen);
+
+    for (const { doc: d, data: e } of candidates) {
       if (band !== Infinity && Math.abs((e.rating || RATING_INICIAL) - this.profile.rating) > band) continue;
       const gameId = this._randomId(10);
       try {
@@ -286,7 +316,7 @@ export class OnlineManager {
 
   async cancelSearch() {
     this._stopSearch();
-    if (this.f) {
+    if (this.f && this.uid) {
       await this.f.deleteDoc(this.f.doc(this.db, 'lobby', this.uid)).catch(() => {});
     }
   }
@@ -377,7 +407,8 @@ export class OnlineManager {
     const ref = f.doc(this.db, 'games', gameId);
     this.game = {
       id: gameId, ref, myColor, data: null, started: false,
-      spectate: !!opts.spectate, lastOppHb: null, lastOppSeen: Date.now()
+      spectate: !!opts.spectate, lastOppHb: null, lastOppSeen: Date.now(),
+      rematchCount: 0, rematchNotified: false
     };
 
     this.unsubGame = f.onSnapshot(ref, snap => {
@@ -388,19 +419,52 @@ export class OnlineManager {
       /* Início (ou retomada) da partida */
       if (!this.game.started && g.status !== 'waiting') {
         this.game.started = true;
+        this.game.rematchCount = g.rematchCount || 0;
         this.lastEmoteT = g.emote?.t || 0;
         this.lastChatT = g.quickChat?.t || 0;
         const resume = !!opts.resume;
         if (resume) this.appliedMoves = (g.moves || []).length;
         if (!this.game.spectate) this._startHeartbeat();
-        const opponent = myColor === -1 ? g.white : g.black;
+        const opponent = this.game.myColor === -1 ? g.white : g.black;
         if (this.onMatchFound) {
           this.onMatchFound({
-            myColor, opponent, code: gameId, resume,
+            myColor: this.game.myColor, opponent, code: gameId, resume,
             moves: (g.moves || []).map(s => JSON.parse(s).m),
             data: g
           });
         }
+      }
+
+      /* Revanche aceita na mesma sala (inverte as cores e reinicia tabuleiro) */
+      if (this.game.started && g.status === 'active' && (g.rematchCount || 0) > (this.game.rematchCount || 0)) {
+        this.game.rematchCount = g.rematchCount || 0;
+        this.game.rematchNotified = false;
+        if (!this.game.spectate) {
+          this.game.myColor = -this.game.myColor;
+        }
+        myColor = this.game.myColor;
+        this.appliedMoves = 0;
+        this.rated = false;
+        this.lastDelta = 0;
+        this._stopTimers();
+        if (!this.game.spectate) {
+          this._startHeartbeat();
+          this.presenceTimer = setInterval(() => {
+            if (!this.game || !this.game.started) return;
+            if (this.game.data && this.game.data.status !== 'active') return;
+            if (this.onPresence) {
+              this.onPresence(Math.floor((Date.now() - this.game.lastOppSeen) / 1000));
+            }
+          }, 1000);
+        }
+        const opponent = myColor === -1 ? g.white : g.black;
+        if (this.onMatchFound) {
+          this.onMatchFound({
+            myColor, opponent, code: gameId, resume: false,
+            moves: [], data: g, isRematch: true
+          });
+        }
+        return;
       }
 
       /* Lances novos */
@@ -434,7 +498,7 @@ export class OnlineManager {
       }
 
       /* Presença do oponente (heartbeat) */
-      const oppHb = myColor === 1 ? g.hbBlack : g.hbWhite;
+      const oppHb = this.game.myColor === 1 ? g.hbBlack : g.hbWhite;
       if (oppHb !== this.game.lastOppHb) {
         this.game.lastOppHb = oppHb;
         this.game.lastOppSeen = Date.now();
@@ -445,10 +509,18 @@ export class OnlineManager {
         this.rated = true;
         if (!this.game.spectate) {
           this._applyRating(g);
-          this._saveMatchHistory(gameId, g);
+          const histId = (g.rematchCount || 0) > 0 ? `${gameId}_${g.rematchCount}` : gameId;
+          this._saveMatchHistory(histId, g);
         }
         this._stopTimers();
         if (this.onGameEnd) this.onGameEnd(g.winner, g.reason);
+      }
+
+      /* Pedido de revanche do oponente após o fim de jogo */
+      if (g.status === 'finished' && g.rematchOffer && g.rematchOffer !== this.uid &&
+          !this.game.spectate && !this.game.rematchNotified) {
+        this.game.rematchNotified = true;
+        if (this.onRematchOffer) this.onRematchOffer();
       }
     }, e => console.error('Erro no snapshot da partida:', e));
 
@@ -553,6 +625,52 @@ export class OnlineManager {
     if (!this.game) return;
     if (accept) await this.finishGame(0, 'draw');
     else await this.f.updateDoc(this.game.ref, { drawOffer: null }).catch(() => {});
+  }
+
+  /* Solicita ou aceita revanche instantânea dentro da mesma sala */
+  async requestRematch() {
+    if (!this.game || this.game.spectate) return { fallback: true };
+    const f = this.f;
+    const ref = this.game.ref;
+    let res = { fallback: true };
+    try {
+      await f.runTransaction(this.db, async tx => {
+        const snap = await tx.get(ref);
+        if (!snap.exists()) {
+          res = { fallback: true };
+          return;
+        }
+        const g = snap.data();
+        if (g.rematchOffer && g.rematchOffer !== this.uid) {
+          /* Ambos querem revanche: inverte as cores e reinicia a partida na mesma sala */
+          const tc = g.tc || { base: 0, inc: 0 };
+          tx.update(ref, {
+            status: 'active',
+            white: g.black,
+            black: g.white,
+            moves: [],
+            drawOffer: null,
+            rematchOffer: null,
+            winner: null,
+            reason: null,
+            clockW: tc.base,
+            clockB: tc.base,
+            hbWhite: Date.now(),
+            hbBlack: Date.now(),
+            turnStartedAt: f.serverTimestamp(),
+            rematchCount: (g.rematchCount || 0) + 1
+          });
+          res = { started: true };
+        } else {
+          tx.update(ref, { rematchOffer: this.uid });
+          res = { offered: true };
+        }
+      });
+    } catch (e) {
+      console.error('Erro ao solicitar revanche:', e);
+      res = { fallback: true };
+    }
+    return res;
   }
 
   /* Sai da partida (desiste se ainda estiver ativa; espectador só desconecta) */

@@ -28,7 +28,9 @@ const DICT = {
     rematch: 'JOGAR NOVAMENTE', share: '📸 COMPARTILHAR RESULTADO',
     backMenu: 'VOLTAR AO MENU',
     googleConnect: 'Entrar com Google', googleConnected: '✓ Conectado com Google',
-    authSignin: 'ENTRAR'
+    authSignin: 'ENTRAR',
+    promo_tag: 'CONHEÇA TAMBÉM · 3D ONLINE',
+    promo_desc: 'Battle Royale 3D, Heróis, Torre Roguelike & Stockfish'
   },
   en: {
     subtitle: 'OFFICIAL BRAZILIAN RULES',
@@ -50,7 +52,9 @@ const DICT = {
     rematch: 'PLAY AGAIN', share: '📸 SHARE RESULT',
     backMenu: 'BACK TO MENU',
     googleConnect: 'Sign in with Google', googleConnected: '✓ Signed in with Google',
-    authSignin: 'SIGN IN'
+    authSignin: 'SIGN IN',
+    promo_tag: 'ALSO PLAY · 3D ONLINE',
+    promo_desc: 'Battle Royale 3D, Heroes, Roguelike Tower & Stockfish'
   },
   es: {
     subtitle: 'REGLAS OFICIALES BRASILEÑAS',
@@ -72,7 +76,9 @@ const DICT = {
     rematch: 'JUGAR DE NUEVO', share: '📸 COMPARTIR RESULTADO',
     backMenu: 'VOLVER AL MENÚ',
     googleConnect: 'Entrar con Google', googleConnected: '✓ Conectado con Google',
-    authSignin: 'ENTRAR'
+    authSignin: 'ENTRAR',
+    promo_tag: 'CONOCE TAMBIÉN · 3D EN LÍNEA',
+    promo_desc: 'Battle Royale 3D, Héroes, Torre Roguelike y Stockfish'
   }
 };
 
